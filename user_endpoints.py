@@ -27,7 +27,7 @@ def password_valid(password: str, hashed_password: str) -> bool:
 
 
 @user.route('/create_user', methods=['POST'])
-def version():
+def create_user():
     f"""
     Creates user with name, email and password
     
