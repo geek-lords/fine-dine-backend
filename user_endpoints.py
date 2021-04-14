@@ -33,6 +33,18 @@ def version():
     
     Name must not be empty, email must be a valid email and password
     must be between ${MinPasswordLength} and ${MaxPasswordLength}
+    
+    Sample input - 
+    {
+        "name": "Hemil",
+        "password": "abcdef",
+        "email": "abc@def.com"
+    }
+    
+    Sample output - 
+    {
+        "jwt_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
+    }
     :return: a jwt token 
     """
     try:
@@ -84,6 +96,17 @@ def authenticate():
     """
     Takes email and password string and returns a jwt token is user
     is found. Else returns the error
+
+    Sample input -
+    {
+        "password": "abcdef",
+        "email": "abc@def.com"
+    }
+
+    Sample output -
+    {
+        "jwt_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
+    }
     :return:
     """
     try:
