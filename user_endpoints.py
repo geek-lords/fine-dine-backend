@@ -2,6 +2,7 @@ from uuid import uuid4
 
 import bcrypt
 import jwt
+import pymysql
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, request
 
@@ -28,7 +29,7 @@ def password_valid(password: str, hashed_password: str) -> bool:
 
 @user.route('/create_user', methods=['POST'])
 def create_user():
-    f"""
+    """
     Creates user with name, email and password
     
     Name must not be empty, email must be a valid email and password
@@ -89,6 +90,8 @@ def create_user():
             }
     except KeyError:
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
+    except pymysql.err.IntegrityError:
+        return {'error': 'User already exists'}
 
 
 @user.route('/authenticate', methods=['POST'])
@@ -164,3 +167,12 @@ def authenticate():
 def validate_token():
     decoded_token = jwt.decode(request.json['jwt'], jwt_secret, algorithms=['HS256'])
     return {'token': decoded_token}
+
+
+@user.route('/menu')
+def get_menu():
+    restaurant_id = request.args.get('restaurant_id', None)
+    table_no = request.args.get('table_no', None)
+
+    if not restaurant_id or not table_no:
+        return {'error': 'Invalid input. One or more parameters absent'}
