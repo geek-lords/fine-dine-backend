@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import bcrypt
 import jwt
-import psycopg2
+import pymysql
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, request
 
@@ -90,7 +90,7 @@ def create_user():
             }
     except KeyError:
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
-    except psycopg2.errors.UniqueViolation:
+    except pymysql.err.IntegrityError:
         return {'error': 'User already exists'}
 
 
@@ -167,3 +167,12 @@ def authenticate():
 def validate_token():
     decoded_token = jwt.decode(request.json['jwt'], jwt_secret, algorithms=['HS256'])
     return {'token': decoded_token}
+
+
+@user.route('/menu')
+def get_menu():
+    restaurant_id = request.args.get('restaurant_id', None)
+    table_no = request.args.get('table_no', None)
+
+    if not restaurant_id or not table_no:
+        return {'error': 'Invalid input. One or more parameters absent'}

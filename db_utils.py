@@ -1,12 +1,12 @@
-import psycopg2
+import pymysql
 from contextlib2 import contextmanager
 
-from config import connection_url
+from config import username, password, hostname, database
 
 
 @contextmanager
 def connection():
-    conn = psycopg2.connect(connection_url)
+    conn = pymysql.connect(user=username, password=password, host=hostname, database=database)
 
     try:
         yield conn
