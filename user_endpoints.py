@@ -183,7 +183,7 @@ def validate_token():
 # decodes user id. In case of error, returns None
 def _decoded_user_id(_request):
     try:
-        return jwt.decode(_request.header['X-Auth-Token'], jwt_secret, algorithms=['HS256'])['user_id']
+        return jwt.decode(_request.headers['X-Auth-Token'], jwt_secret, algorithms=['HS256'])['user_id']
     except InvalidSignatureError:
         return None
     except KeyError:
@@ -202,16 +202,11 @@ def get_menu():
 @user.route("/order", methods=["POST"])
 def create_order():
     try:
-        if not request.json:
-            return {"error": "No Json data found."}, ValidationError
         order_id = str(uuid4())
-        user_id = jwt.decode(request.json['jwt'], jwt_secret, algorithms=['HS256'])['user_id']
+        user_id = _decoded_user_id(request)
         with connection() as conn, conn.cursor() as cur:
-            str1 = cur.mogrify("insert into orders values(%s,%s)", (order_id, user_id), )
-            print(str1)
-            cur.execute(str1)
             cur.execute("insert into orders values(%s,%s)", (order_id, user_id),)
             conn.commit()
-        return {'message': "New order created."}
+        return {'order_id': order_id }
     except KeyError:
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
