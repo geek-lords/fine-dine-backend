@@ -250,7 +250,7 @@ def get_menu():
 def create_order():
     """
     url - orders?restaurant_id=id&table_name=table_name
-
+    headers - X-Auth-Key: <your jwt token>
     Sample output -
     {
         "order_id": "e498ccec-319f-4868-8fc5-4d368ee92258"
