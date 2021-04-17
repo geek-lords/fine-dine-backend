@@ -188,7 +188,7 @@ def get_menu():
     """
     url - /api/v1/menu?restaurant_id=jhcvxjdsvydsgvfshgho
 
-    sample output -
+    Sample output -
     {
         "menu": [
             {
@@ -207,12 +207,16 @@ def get_menu():
             },
         ],
     }
+
+    Sample error -
+    {
+        "error": "reason for error"
+    }
     :return:
     """
     restaurant_id = request.args.get('restaurant_id')
     if not restaurant_id:
         return {'error': 'Invalid input. One or more parameters absent'}
-      
 
     with connection() as conn, conn.cursor() as cur:
         cur.execute(
@@ -241,14 +245,59 @@ def get_menu():
 
         return {'menu': menu}
 
+
 @user.route("/order", methods=["POST"])
 def create_order():
+    """
+    url - orders?restaurant_id=id&table_name=table_name
+
+    Sample output -
+    {
+        "order_id": "e498ccec-319f-4868-8fc5-4d368ee92258"
+    }
+
+    Sample error -
+    {
+        "error": "reason for error"
+    }
+    :return:
+    """
     try:
+        restaurant_id = request.args.get('restaurant_id')
+        table_name = request.args.get('table_name')
+
+        if not restaurant_id or not table_name:
+            return {'error': 'Invalid input. One or more parameters absent'}
         order_id = str(uuid4())
         user_id = _decoded_user_id(request)
+
+        if not user_id:
+            return {'error': 'Authentication failed. Please send correct jwt token'}
+
         with connection() as conn, conn.cursor() as cur:
-            cur.execute("insert into orders values(%s,%s)", (order_id, user_id),)
+            cur.execute(
+                'select id from restaurant where id = %s',
+                (restaurant_id,)
+            )
+
+            if cur.rowcount == 0:
+                return {'error': 'restaurant id does not exist'}, ValidationError
+
+            cur.execute(
+                'select name from tables '
+                'where name = %s and restaurant_id = %s',
+                (table_name, restaurant_id)
+            )
+
+            if cur.rowcount == 0:
+                return {'error': 'table does not exist'}, ValidationError
+
+            cur.execute(
+                "insert into orders(id, user_id, table_name, restaurant_id) "
+                "values(%s, %s, %s, %s)",
+                (order_id, user_id, table_name, restaurant_id),
+            )
             conn.commit()
-        return {'order_id': order_id }
+        return {'order_id': order_id}
     except KeyError:
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
