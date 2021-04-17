@@ -5,6 +5,7 @@ import jwt
 import pymysql
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, request
+from jwt import InvalidSignatureError
 
 from config import jwt_secret
 from db_utils import connection
@@ -45,6 +46,11 @@ def create_user():
     Sample output - 
     {
         "jwt_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
+    }
+
+    Sample error -
+    {
+        "error": "reason for error"
     }
     :return: a jwt token 
     """
@@ -110,6 +116,11 @@ def authenticate():
     {
         "jwt_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
     }
+
+    Sample error -
+    {
+        "error": "reason for error"
+    }
     :return:
     """
     try:
@@ -165,8 +176,18 @@ def authenticate():
 # temporary
 @user.route('/validate_token')
 def validate_token():
-    decoded_token = jwt.decode(request.json['jwt'], jwt_secret, algorithms=['HS256'])
-    return {'token': decoded_token}
+    user_id = jwt.decode(request.json['jwt'], jwt_secret, algorithms=['HS256'])['user_id']
+    return {'token': user_id}
+
+
+# decodes user id. In case of error, returns None
+def _decoded_user_id(_request):
+    try:
+        return jwt.decode(_request.header['X-Auth-Token'], jwt_secret, algorithms=['HS256'])['user_id']
+    except InvalidSignatureError:
+        return None
+    except KeyError:
+        return None
 
 
 @user.route('/menu')
