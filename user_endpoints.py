@@ -184,12 +184,13 @@ def create_order():
         if not request.json:
             return {"error": "No Json data found."}, ValidationError
         order_id = str(uuid4())
-        user_id = jwt.decode(request.json['jwt'], jwt_secret, algorithms='HS256')
+        user_id = jwt.decode(request.json['jwt'], jwt_secret, algorithms=['HS256'])['user_id']
         with connection() as conn, conn.cursor() as cur:
-            cur.execute("insert into orders values(%s,%s);", (order_id, user_id))
+            str1 = cur.mogrify("insert into orders values(%s,%s)", (order_id, user_id), )
+            print(str1)
+            cur.execute(str1)
+            cur.execute("insert into orders values(%s,%s)", (order_id, user_id),)
             conn.commit()
         return {'message': "New order created."}
     except KeyError:
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
-    except pymysql.err.InternalError:
-        return {'error': "Internal Server Error has occured."}
