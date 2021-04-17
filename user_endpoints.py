@@ -47,6 +47,11 @@ def create_user():
     {
         "jwt_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
     }
+
+    Sample error -
+    {
+        "error": "reason for error"
+    }
     :return: a jwt token 
     """
     try:
@@ -110,6 +115,11 @@ def authenticate():
     Sample output -
     {
         "jwt_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
+    }
+
+    Sample error -
+    {
+        "error": "reason for error"
     }
     :return:
     """
