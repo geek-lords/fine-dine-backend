@@ -3,6 +3,8 @@ from uuid import uuid4
 import bcrypt
 import jwt
 import pymysql
+import requests
+from apscheduler.schedulers.background import BackgroundScheduler
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, request
 from jwt import InvalidSignatureError
@@ -13,6 +15,24 @@ from db_utils import connection
 MinPasswordLength = 5
 
 user = Blueprint('user', __name__)
+
+scheduler = BackgroundScheduler()
+
+
+def keep_server_alive():
+    requests.get(
+        'https://fine-dine-backend.herokuapp.com/api/v1/menu?restaurant_id=6902d892-4d75-44fe-85bd-b92a60260f70'
+    )
+    print('request sent')
+
+
+scheduler.add_job(
+    keep_server_alive,
+    'interval',
+    minutes=25,
+)
+
+scheduler.start()
 
 # HTTP error code for validation error
 ValidationError = 422
