@@ -1,4 +1,7 @@
 /.env
 /venv/
+<<<<<<< HEAD
+=======
 /__pycache__/
+>>>>>>> 02aeb09c9e7605cd98ed4d03dbb380808d4b843d
 token.txt
