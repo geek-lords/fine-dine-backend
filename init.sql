@@ -45,3 +45,9 @@ create table order_items
     price    numeric(7, 2) not null,
     tax      numeric(7, 2) not null
 );
+
+create table tables
+(
+    name text not null,
+    restaurant_id varchar(36) not null references restaurant(id)
+);

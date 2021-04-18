@@ -52,7 +52,7 @@ def create_user():
     {
         "error": "reason for error"
     }
-    :return: a jwt token 
+    :return: a jwt token
     """
     try:
         if not request.json:
@@ -183,7 +183,7 @@ def validate_token():
 # decodes user id. In case of error, returns None
 def _decoded_user_id(_request):
     try:
-        return jwt.decode(_request.header['X-Auth-Token'], jwt_secret, algorithms=['HS256'])['user_id']
+        return jwt.decode(_request.headers['X-Auth-Token'], jwt_secret, algorithms=['HS256'])['user_id']
     except InvalidSignatureError:
         return None
     except KeyError:
@@ -197,3 +197,16 @@ def get_menu():
 
     if not restaurant_id or not table_no:
         return {'error': 'Invalid input. One or more parameters absent'}
+
+
+@user.route("/order", methods=["POST"])
+def create_order():
+    try:
+        order_id = str(uuid4())
+        user_id = _decoded_user_id(request)
+        with connection() as conn, conn.cursor() as cur:
+            cur.execute("insert into orders values(%s,%s)", (order_id, user_id),)
+            conn.commit()
+        return {'order_id': order_id }
+    except KeyError:
+        return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
