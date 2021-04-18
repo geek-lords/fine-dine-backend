@@ -30,10 +30,19 @@ create table menu
 );
 
 
+create table tables
+(
+    name text not null,
+    restaurant_id varchar(36) not null references restaurant(id)
+);
+
+
 create table orders
 (
     id      varchar(36) primary key,
-    user_id varchar(36) not null
+    user_id varchar(36) not null,
+    restaurant_id varchar(36) not null references restaurant(id),
+    table_name text not null references tables(name)
 );
 
 
