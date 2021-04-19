@@ -9,6 +9,7 @@ from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, request
 from jwt import InvalidSignatureError
 
+import paytm
 from config import jwt_secret
 from db_utils import connection
 
@@ -222,11 +223,117 @@ def get_menu():
 @user.route("/order", methods=["POST"])
 def create_order():
     try:
-        order_id = str(uuid4())
         user_id = _decoded_user_id(request)
+        if not user_id:
+            return {'error': 'Authentication failure'}, ValidationError
+
+        table_name = request.args.get('table')
+        if not table_name:
+            return {'error': 'table parameter not found in request'}, ValidationError
+
+        restaurant_id = request.args.get('restaurant_id')
+        if not restaurant_id:
+            return {'error': 'restaurant id not found'}, ValidationError
+
         with connection() as conn, conn.cursor() as cur:
-            cur.execute("insert into orders values(%s,%s)", (order_id, user_id),)
+            cur.execute(
+                'select name from restaurant where id = %s',
+                (restaurant_id,)
+            )
+
+            if cur.rowcount == 0:
+                return {'error': 'Restaurant id does not exist'}, ValidationError
+
+            cur.execute(
+                'select name from tables '
+                'where restaurant_id = %s and name = %s',
+                (restaurant_id, table_name)
+            )
+
+            if cur.rowcount == 0:
+                return {'error': 'Table not found'}, ValidationError
+
+            order_id = str(uuid4())
+
+            cur.execute(
+                "insert into orders(id, user_id, table_name, restaurant_id, payment_status) "
+                "values(%s, %s, %s, %s, %s)",
+                (order_id, user_id, table_name, restaurant_id, paytm.PaymentStatus.NOT_PAID),
+            )
+
             conn.commit()
-        return {'order_id': order_id }
+        return {'order_id': order_id}
     except KeyError:
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
+
+
+@user.route('/checkout', methods=['POST'])
+def checkout():
+    order_id = request.args.get('order_id')
+    if not order_id:
+        return {'error': 'Order id not found'}
+
+    user_id = _decoded_user_id(request)
+    if not user_id:
+        return {'error': 'Authentication failure'}, ValidationError
+
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            'select user_id, payment_status, restaurant_id from orders '
+            'where id = %s',
+            (order_id,)
+        )
+
+        if cur.rowcount == 0:
+            return {'error': 'Invalid input. Order id does not exist'}, ValidationError
+
+        row = cur.fetchone()
+        user_id_who_created_the_order = row[0]
+        payment_status = row[1]
+        restaurant_id = row[2]
+
+        if user_id != user_id_who_created_the_order:
+            return {'error': 'Authentication failure'}, ValidationError
+
+        if payment_status == paytm.PaymentStatus.SUCCESSFUL.value:
+            return {'error': 'Order has already been paid'}, ValidationError
+
+        cur.execute(
+            'select sum(price) from order_items where order_id = %s',
+            (order_id,)
+        )
+
+        price = cur.fetchone()[0]
+        # sum should return 0 for empty list. But it is somehow returning None
+        if price == 0 or price is None:
+            return {'error': 'Please book something before checking out'}, ValidationError
+
+        cur.execute(
+            'select tax_percent from restaurant where id = %s',
+            (restaurant_id,)
+        )
+
+        tax_percent = cur.fetchone()[0]
+        tax = price * tax_percent / 100
+        total_price = price + tax
+
+        cur.execute(
+            'update orders set price_excluding_tax = %s, tax = %s where id = %s',
+            (price, tax, order_id)
+        )
+
+        txn_id = str(uuid4())
+        cur.execute(
+            'insert into transactions(id, order_id, price) '
+            'values (%s, %s, %s)',
+            (txn_id, order_id, total_price)
+        )
+
+        txn_token, callback_url = paytm.initiate_transaction(user_id, txn_id, total_price)
+
+        conn.commit()
+
+        return {
+            'txn_token': txn_token,
+            'callback_url': callback_url,
+        }
