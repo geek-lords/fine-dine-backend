@@ -219,13 +219,6 @@ def authenticate():
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
 
 
-# temporary
-@user.route('/validate_token')
-def validate_token():
-    user_id = jwt.decode(request.json['jwt'], jwt_secret, algorithms=['HS256'])['user_id']
-    return {'token': user_id}
-
-
 # decodes user id. In case of error, returns None
 def _decoded_user_id(_request):
     try:
@@ -238,12 +231,61 @@ def _decoded_user_id(_request):
 
 @user.route('/menu')
 def get_menu():
-    restaurant_id = request.args.get('restaurant_id', None)
-    table_no = request.args.get('table_no', None)
+    """
+    url - /api/v1/menu?restaurant_id=jhcvxjdsvydsgvfshgho
 
-    if not restaurant_id or not table_no:
+    sample output -
+    {
+        "menu": [
+            {
+                "id": 1,
+                "name": "name of menu item 1",
+                "description": "description of menu item 1",
+                "photo_url": "http://google.com"
+                "price": 50.5
+            },
+            {
+                "id": 2,
+                "name": "name of menu item 2",
+                "description": "description of menu item 2",
+                "photo_url": "http://google.com"
+                "price": 50.5
+            },
+        ],
+    }
+    :return:
+    """
+    restaurant_id = request.args.get('restaurant_id')
+    if not restaurant_id:
         return {'error': 'Invalid input. One or more parameters absent'}
+      
 
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            'select id, name, description, photo_url, price '
+            'from menu '
+            'where restaurant_id = %s',
+            (restaurant_id,)
+        )
+
+        menu = []
+
+        for id, name, description, photo_url, price in cur.fetchall():
+            menu.append(
+                {
+                    'id': id,
+                    'name': name,
+                    'description': description,
+                    'photo_url': photo_url,
+                    # price is stored as decimal during conversion
+                    # which cannot be converted to json by default.
+                    # So I am converting it to float which can be
+                    # used in json
+                    'price': float(price),
+                }
+            )
+
+        return {'menu': menu}
 
 @user.route("/order", methods=["POST"])
 def create_order():
