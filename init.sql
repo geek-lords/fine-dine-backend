@@ -13,7 +13,8 @@ create table restaurant
     id          varchar(36) primary key,
     name        text not null,
     description text not null,
-    photo_url   text not null
+    photo_url   text not null,
+    tax numeric(5,2) not null
 -- will add more things like co ordinates when we get to browse
 -- lets focus on core features first
 );
@@ -43,5 +44,11 @@ create table order_items
     menu_id  int           not null references menu (id),
     quantity int           not null check ( quantity > 0 ),
     price    numeric(7, 2) not null,
+<<<<<<< Updated upstream
     tax      numeric(7, 2) not null
 );
+=======
+    tax_cost      numeric(7, 2) not null,
+    primary key(order_id, menu_id)
+);
+>>>>>>> Stashed changes
