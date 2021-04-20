@@ -10,7 +10,7 @@ from flask import Blueprint, request
 from jwt import InvalidSignatureError
 
 import paytm
-from config import jwt_secret
+from config import jwt_secret, merchant_id
 from db_utils import connection
 
 MinPasswordLength = 5
@@ -258,7 +258,7 @@ def create_order():
             cur.execute(
                 "insert into orders(id, user_id, table_name, restaurant_id, payment_status) "
                 "values(%s, %s, %s, %s, %s)",
-                (order_id, user_id, table_name, restaurant_id, paytm.PaymentStatus.NOT_PAID),
+                (order_id, user_id, table_name, restaurant_id, paytm.PaymentStatus.NOT_PAID.value),
             )
 
             conn.commit()
@@ -271,7 +271,7 @@ def create_order():
 def checkout():
     order_id = request.args.get('order_id')
     if not order_id:
-        return {'error': 'Order id not found'}
+        return {'error': 'Order id not found'}, ValidationError
 
     user_id = _decoded_user_id(request)
     if not user_id:
@@ -324,9 +324,9 @@ def checkout():
 
         txn_id = str(uuid4())
         cur.execute(
-            'insert into transactions(id, order_id, price) '
-            'values (%s, %s, %s)',
-            (txn_id, order_id, total_price)
+            'insert into transactions(id, order_id, price, payment_status) '
+            'values (%s, %s, %s, %s)',
+            (txn_id, order_id, total_price, paytm.PaymentStatus.NOT_PAID.value)
         )
 
         txn_token, callback_url = paytm.initiate_transaction(user_id, txn_id, total_price)
@@ -334,6 +334,109 @@ def checkout():
         conn.commit()
 
         return {
-            'txn_token': txn_token,
+            'txn_id': txn_id,
+            'm_id': merchant_id,
+            'token': txn_token,
             'callback_url': callback_url,
+        }
+
+
+@user.route('/update_payment_status', methods=['POST'])
+def update_payment_status():
+    """
+    Updates transaction status for the given transaction id
+
+    If the payment status is set to successful in the database, returns -
+    {
+        "success": true
+    }
+
+    If the payment status is set to failed or invalid in database, returns -
+    {
+        "success": false
+    }
+
+    If there is a successful transaction against the order for which
+    this transaction was initiated, then it returns -
+    {
+        "error": "This order has already been paid for"
+    }
+
+    If none of the above conditions are true, fetches the updated
+    payment status from paytm and returns -
+    {
+        "payment_status": <payment_status>
+    }
+
+    Payment status -
+
+    Value | Meaning
+    0     | SUCCESSFUL
+    1     | PENDING
+    2     | INVALID
+    3     | FAILED
+
+    :return:
+    """
+    user_id = _decoded_user_id(request)
+    if not user_id:
+        return {'error': 'Authentication failed'}, ValidationError
+
+    txn_id = request.args.get('txn_id')
+    if not txn_id:
+        return {'error': 'Transaction id not found'}, ValidationError
+
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            'select order_id, payment_status from transactions '
+            'where id = %s',
+            (txn_id,)
+        )
+
+        if cur.rowcount == 0:
+            return {'error': 'Transaction id does not exist'}, ValidationError
+
+        row = cur.fetchone()
+        order_id = row[0]
+        payment_status = row[1]
+
+        cur.execute('select user_id from orders where id = %s', (order_id,))
+        if user_id != cur.fetchone()[0]:
+            return {'error': 'Authentication failed'}, ValidationError
+
+        # if the payment is not done or pending, only then we need to update the status
+        # otherwise, we already have the latest status
+        if payment_status != paytm.PaymentStatus.NOT_PAID.value \
+                and payment_status != paytm.PaymentStatus.PENDING.value:
+            return {'success': payment_status == paytm.PaymentStatus.SUCCESSFUL.value}
+
+        # check if there are successful transactions against this order id
+        cur.execute(
+            'select id from transactions '
+            'where order_id = %s '
+            'and id != %s '
+            'and payment_status = %s',
+            (order_id, txn_id, paytm.PaymentStatus.SUCCESSFUL.value)
+        )
+
+        if cur.rowcount != 0:
+            return {'error': 'This order has already been paid for. '
+                             'Please cancel the transaction on your end'}, ValidationError
+
+        updated_payment_status = paytm.payment_status(txn_id)
+
+        cur.execute(
+            'update transactions set payment_status = %s where id = %s',
+            (updated_payment_status.value, txn_id)
+        )
+
+        cur.execute(
+            'update orders set payment_status = %s where id = %s',
+            (updated_payment_status.value, order_id)
+        )
+
+        conn.commit()
+
+        return {
+            'payment_status': updated_payment_status.value
         }

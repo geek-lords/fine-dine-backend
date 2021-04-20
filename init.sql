@@ -66,5 +66,6 @@ create table transactions
 (
     id       varchar(36) primary key,
     order_id varchar(36)   not null references orders (id),
-    price    numeric(7, 2) not null
+    price    numeric(7, 2) not null,
+    payment_status int not null
 );
