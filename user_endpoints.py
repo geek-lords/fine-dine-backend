@@ -41,7 +41,7 @@ ValidationError = 422
 MaxPasswordLength = 70
 
 
-class order:
+class Order:
     def __init__(self, order_id, menu_id, quantity):
         self.order_id = order_id
         self.menu_id = menu_id
@@ -72,16 +72,14 @@ class order:
     def set_order(self):
         try:
             with connection() as conn, conn.cursor() as cur:
-                restaurant = self.get_restaurant()
-                cur.execute("select tax_percent from restaurant where id = %s", (restaurant,))
-                self.tax = float(cur.fetchone()[0])
-                cur.execute("insert into order_items values(%s, %s, %s, %s, %s) on duplicate key "
-                            "update quantity = quantity + %s, price = price + %s ",
-                            (self.order_id, self.menu_id, self.quantity, self.price, self.tax, int(self.quantity),
-                             float(self.price)))
+                cur.execute(
+                    "insert into order_items(order_id, menu_id, quantity, price) "
+                    "values(%s, %s, %s, %s) on duplicate key "
+                    "update quantity = quantity + %s, price = price + %s ",
+                    (self.order_id, self.menu_id, self.quantity, self.price, int(self.quantity), float(self.price))
+                )
                 conn.commit()
                 return {"message": "Order Placed"}, 200
-                # insert into hotels_table values(10, 11, 6, 60) on duplicate key update quantity = quantity + 6, price = price + 60;
         except TypeError as t:
             print(t)
             return TypeError
@@ -554,7 +552,7 @@ def order_items():
         order_list = request.json["order_list"]
         list_of_orders = []
         for orders in order_list:
-            list_of_orders.append(order(order_id, orders.get("menu_id"), orders.get("quantity")))
+            list_of_orders.append(Order(order_id, orders.get("menu_id"), orders.get("quantity")))
         restaurant_id = list_of_orders[0].get_restaurant()
         for element in list_of_orders:
             try:
