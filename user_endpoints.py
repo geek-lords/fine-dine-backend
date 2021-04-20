@@ -213,11 +213,65 @@ def _decoded_user_id(_request):
 
 @user.route('/menu')
 def get_menu():
-    restaurant_id = request.args.get('restaurant_id', None)
-    table_no = request.args.get('table_no', None)
+    """
+        url - /api/v1/menu?restaurant_id=jhcvxjdsvydsgvfshgho
 
-    if not restaurant_id or not table_no:
+        Sample output -
+        {
+            "menu": [
+                {
+                    "id": 1,
+                    "name": "name of menu item 1",
+                    "description": "description of menu item 1",
+                    "photo_url": "http://google.com"
+                    "price": 50.5
+                },
+                {
+                    "id": 2,
+                    "name": "name of menu item 2",
+                    "description": "description of menu item 2",
+                    "photo_url": "http://google.com"
+                    "price": 50.5
+                },
+            ],
+        }
+
+        Sample error -
+        {
+            "error": "reason for error"
+        }
+        :return:
+        """
+    restaurant_id = request.args.get('restaurant_id')
+    if not restaurant_id:
         return {'error': 'Invalid input. One or more parameters absent'}
+
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            'select id, name, description, photo_url, price '
+            'from menu '
+            'where restaurant_id = %s',
+            (restaurant_id,)
+        )
+
+        menu = []
+
+        for id, name, description, photo_url, price in cur.fetchall():
+            menu.append(
+                {
+                    'id': id,
+                    'name': name,
+                    'description': description,
+                    'photo_url': photo_url,
+                    # price is stored as decimal during conversion
+                    # which cannot be converted to json by default.
+                    # So I am converting it to float which can be
+                    # used in json
+                    'price': float(price),
+                }
+            )
+
+        return {'menu': menu}
 
 
 @user.route("/order", methods=["POST"])
@@ -237,12 +291,14 @@ def create_order():
 
         with connection() as conn, conn.cursor() as cur:
             cur.execute(
-                'select name from restaurant where id = %s',
+                'select tax_percent from restaurant where id = %s',
                 (restaurant_id,)
             )
 
             if cur.rowcount == 0:
                 return {'error': 'Restaurant id does not exist'}, ValidationError
+
+            tax_percent = float(cur.fetchone()[0])
 
             cur.execute(
                 'select name from tables '
@@ -262,7 +318,7 @@ def create_order():
             )
 
             conn.commit()
-        return {'order_id': order_id}
+        return {'order_id': order_id, 'tax_percent': tax_percent}
     except KeyError:
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
 
@@ -338,6 +394,7 @@ def checkout():
             'm_id': merchant_id,
             'token': txn_token,
             'callback_url': callback_url,
+            'amount': str(total_price)
         }
 
 
