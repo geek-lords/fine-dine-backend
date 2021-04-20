@@ -53,7 +53,8 @@ create table order_items
     order_id varchar(36)   not null references orders (id),
     menu_id  int           not null references menu (id),
     quantity int           not null check ( quantity > 0 ),
-    price    numeric(7, 2) not null
+    price    numeric(7, 2) not null,
+    primary key(order_id, menu_id)
 );
 
 create table tables
