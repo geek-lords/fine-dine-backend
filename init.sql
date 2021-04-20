@@ -24,7 +24,7 @@ create table menu
     name          text          not null,
     description   text          not null,
     photo_url     text          not null,
-    restaurant_id varchar(36)   not null,
+    restaurant_id varchar(36)   not null references restaurant (id),
     price         numeric(7, 2) not null
 );
 
@@ -39,7 +39,7 @@ create table tables
 create table orders
 (
     id                  varchar(36) primary key,
-    user_id             varchar(36) not null,
+    user_id             varchar(36) not null references users (id),
     restaurant_id       varchar(36) not null references restaurant (id),
     table_name          text        not null references tables (name),
     payment_status      int         not null,
@@ -54,7 +54,7 @@ create table order_items
     menu_id  int           not null references menu (id),
     quantity int           not null check ( quantity > 0 ),
     price    numeric(7, 2) not null,
-    primary key(order_id, menu_id)
+    primary key (order_id, menu_id)
 );
 
 create table tables
@@ -65,8 +65,8 @@ create table tables
 
 create table transactions
 (
-    id       varchar(36) primary key,
-    order_id varchar(36)   not null references orders (id),
-    price    numeric(7, 2) not null,
-    payment_status int not null
+    id             varchar(36) primary key,
+    order_id       varchar(36)   not null references orders (id),
+    price          numeric(7, 2) not null,
+    payment_status int           not null
 );
