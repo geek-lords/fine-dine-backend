@@ -52,11 +52,6 @@ create table order_items
     menu_id  int           not null references menu (id),
     quantity int           not null check ( quantity > 0 ),
     price    numeric(7, 2) not null,
-<<<<<<< Updated upstream
-    tax      numeric(7, 2) not null
+    primary key(order_id, menu_id);
 );
-=======
-    tax_cost      numeric(7, 2) not null,
-    primary key(order_id, menu_id)
-);
->>>>>>> Stashed changes
+
