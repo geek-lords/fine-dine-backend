@@ -547,6 +547,6 @@ def order_items():
                 conn.commit()
         return {"message": "Order Received."}, 200
     except TypeError:
-        return {"error": "<write Error here.>"}
+        return {"error": "Type Error has occurred."}
     except KeyError:
         return {"error": "Parameters missing in Request."}
