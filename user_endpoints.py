@@ -1,69 +1,42 @@
 from uuid import uuid4
-
 import bcrypt
 import jwt
 import pymysql
+import requests
+from apscheduler.schedulers.background import BackgroundScheduler
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, request
 from jwt import InvalidSignatureError
-
-from config import jwt_secret
+import paytm
+from config import jwt_secret, merchant_id
 from db_utils import connection
 
 MinPasswordLength = 5
 
 user = Blueprint('user', __name__)
 
+scheduler = BackgroundScheduler()
+
+
+def keep_server_alive():
+    requests.get(
+        'https://fine-dine-backend.herokuapp.com/api/v1/menu?restaurant_id=6902d892-4d75-44fe-85bd-b92a60260f70'
+    )
+    print('request sent')
+
+
+scheduler.add_job(
+    keep_server_alive,
+    'interval',
+    minutes=25,
+)
+
+scheduler.start()
+
 # HTTP error code for validation error
 ValidationError = 422
 
 MaxPasswordLength = 70
-
-
-class order:
-    def __init__(self, order_id, menu_id, quantity):
-        self.order_id = order_id
-        self.menu_id = menu_id
-        self.quantity = int(quantity)
-
-    def set_price(self):
-        try:
-            with connection() as conn, conn.cursor() as cur:
-                cur.execute("select price from menu where id = %s", (self.menu_id,))
-                self.price = float(cur.fetchone()[0]) * self.quantity
-                return self.price
-        except TypeError:
-            return TypeError
-
-    def validate_request(self):
-        if self.order_id is None or self.menu_id is None or self.quantity is None or self.quantity <= 0:
-            raise ValidationError
-
-    def get_restaurant(self):
-        try:
-            with connection() as conn, conn.cursor() as cur:
-                cur.execute("select restaurant_id from menu where id = %s", (self.menu_id,))
-                restaurant_id = cur.fetchone()[0]
-                return restaurant_id
-        except TypeError:
-            return TypeError
-
-    def set_order(self):
-        try:
-            with connection() as conn, conn.cursor() as cur:
-                restaurant = self.get_restaurant()
-                cur.execute("select tax from restaurant where id = %s", (restaurant,))
-                self.tax = float(cur.fetchone()[0])
-                cur.execute("insert into order_items values(%s, %s, %s, %s, %s) on duplicate key "
-                            "update quantity = quantity + %s, price = price + %s ",
-                            (self.order_id, self.menu_id, self.quantity, self.price, self.tax, int(self.quantity),
-                             float(self.price)))
-                conn.commit()
-                return {"message": "Order Placed"}, 200
-                # insert into hotels_table values(10, 11, 6, 60) on duplicate key update quantity = quantity + 6, price = price + 60;
-        except TypeError as t:
-            print(t)
-            return TypeError
 
 
 def hash_password(password: str) -> str:
@@ -78,18 +51,18 @@ def password_valid(password: str, hashed_password: str) -> bool:
 def create_user():
     """
     Creates user with name, email and password
-    
+
     Name must not be empty, email must be a valid email and password
     must be between ${MinPasswordLength} and ${MaxPasswordLength}
-    
-    Sample input - 
+
+    Sample input -
     {
         "name": "Hemil",
         "password": "abcdef",
         "email": "abc@def.com"
     }
-    
-    Sample output - 
+
+    Sample output -
     {
         "jwt_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
     }
@@ -219,6 +192,13 @@ def authenticate():
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
 
 
+# temporary
+@user.route('/validate_token')
+def validate_token():
+    user_id = jwt.decode(request.json['jwt'], jwt_secret, algorithms=['HS256'])['user_id']
+    return {'token': user_id}
+
+
 # decodes user id. In case of error, returns None
 def _decoded_user_id(_request):
     try:
@@ -232,33 +212,37 @@ def _decoded_user_id(_request):
 @user.route('/menu')
 def get_menu():
     """
-    url - /api/v1/menu?restaurant_id=jhcvxjdsvydsgvfshgho
+        url - /api/v1/menu?restaurant_id=jhcvxjdsvydsgvfshgho
 
-    sample output -
-    {
-        "menu": [
-            {
-                "id": 1,
-                "name": "name of menu item 1",
-                "description": "description of menu item 1",
-                "photo_url": "http://google.com"
-                "price": 50.5
-            },
-            {
-                "id": 2,
-                "name": "name of menu item 2",
-                "description": "description of menu item 2",
-                "photo_url": "http://google.com"
-                "price": 50.5
-            },
-        ],
-    }
-    :return:
-    """
+        Sample output -
+        {
+            "menu": [
+                {
+                    "id": 1,
+                    "name": "name of menu item 1",
+                    "description": "description of menu item 1",
+                    "photo_url": "http://google.com"
+                    "price": 50.5
+                },
+                {
+                    "id": 2,
+                    "name": "name of menu item 2",
+                    "description": "description of menu item 2",
+                    "photo_url": "http://google.com"
+                    "price": 50.5
+                },
+            ],
+        }
+
+        Sample error -
+        {
+            "error": "reason for error"
+        }
+        :return:
+        """
     restaurant_id = request.args.get('restaurant_id')
     if not restaurant_id:
         return {'error': 'Invalid input. One or more parameters absent'}
-      
 
     with connection() as conn, conn.cursor() as cur:
         cur.execute(
@@ -287,48 +271,282 @@ def get_menu():
 
         return {'menu': menu}
 
+
 @user.route("/order", methods=["POST"])
 def create_order():
     try:
-        order_id = str(uuid4())
         user_id = _decoded_user_id(request)
+        if not user_id:
+            return {'error': 'Authentication failure'}, ValidationError
+
+        table_name = request.args.get('table')
+        if not table_name:
+            return {'error': 'table parameter not found in request'}, ValidationError
+
+        restaurant_id = request.args.get('restaurant_id')
+        if not restaurant_id:
+            return {'error': 'restaurant id not found'}, ValidationError
+
         with connection() as conn, conn.cursor() as cur:
-            cur.execute("insert into orders values(%s,%s)", (order_id, user_id), )
+            cur.execute(
+                'select tax_percent from restaurant where id = %s',
+                (restaurant_id,)
+            )
+
+            if cur.rowcount == 0:
+                return {'error': 'Restaurant id does not exist'}, ValidationError
+
+            tax_percent = float(cur.fetchone()[0])
+
+            cur.execute(
+                'select name from tables '
+                'where restaurant_id = %s and name = %s',
+                (restaurant_id, table_name)
+            )
+
+            if cur.rowcount == 0:
+                return {'error': 'Table not found'}, ValidationError
+
+            order_id = str(uuid4())
+
+            cur.execute(
+                "insert into orders(id, user_id, table_name, restaurant_id, payment_status) "
+                "values(%s, %s, %s, %s, %s)",
+                (order_id, user_id, table_name, restaurant_id, paytm.PaymentStatus.NOT_PAID.value),
+            )
+
             conn.commit()
-            return {'order_id': order_id}
+        return {'order_id': order_id, 'tax_percent': tax_percent}
     except KeyError:
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
 
 
-@user.route("/order_items", methods=["POST"])
+@user.route('/checkout', methods=['POST'])
+def checkout():
+    order_id = request.args.get('order_id')
+    if not order_id:
+        return {'error': 'Order id not found'}, ValidationError
+
+    user_id = _decoded_user_id(request)
+    if not user_id:
+        return {'error': 'Authentication failure'}, ValidationError
+
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            'select user_id, payment_status, restaurant_id from orders '
+            'where id = %s',
+            (order_id,)
+        )
+
+        if cur.rowcount == 0:
+            return {'error': 'Invalid input. Order id does not exist'}, ValidationError
+
+        row = cur.fetchone()
+        user_id_who_created_the_order = row[0]
+        payment_status = row[1]
+        restaurant_id = row[2]
+
+        if user_id != user_id_who_created_the_order:
+            return {'error': 'Authentication failure'}, ValidationError
+
+        if payment_status == paytm.PaymentStatus.SUCCESSFUL.value:
+            return {'error': 'Order has already been paid'}, ValidationError
+
+        cur.execute(
+            'select sum(price) from order_items where order_id = %s',
+            (order_id,)
+        )
+
+        price = cur.fetchone()[0]
+        # sum should return 0 for empty list. But it is somehow returning None
+        if price == 0 or price is None:
+            return {'error': 'Please book something before checking out'}, ValidationError
+
+        cur.execute(
+            'select tax_percent from restaurant where id = %s',
+            (restaurant_id,)
+        )
+
+        tax_percent = cur.fetchone()[0]
+        tax = price * tax_percent / 100
+        total_price = price + tax
+
+        cur.execute(
+            'update orders set price_excluding_tax = %s, tax = %s where id = %s',
+            (price, tax, order_id)
+        )
+
+        txn_id = str(uuid4())
+        cur.execute(
+            'insert into transactions(id, order_id, price, payment_status) '
+            'values (%s, %s, %s, %s)',
+            (txn_id, order_id, total_price, paytm.PaymentStatus.NOT_PAID.value)
+        )
+
+        txn_token, callback_url = paytm.initiate_transaction(user_id, txn_id, total_price)
+
+        conn.commit()
+
+        return {
+            'txn_id': txn_id,
+            'm_id': merchant_id,
+            'token': txn_token,
+            'callback_url': callback_url,
+            'amount': str(total_price)
+        }
+
+
+@user.route('/update_payment_status', methods=['POST'])
+def update_payment_status():
+    """
+    Updates transaction status for the given transaction id
+
+    If the payment status is set to successful in the database, returns -
+    {
+        "success": true
+    }
+
+    If the payment status is set to failed or invalid in database, returns -
+    {
+        "success": false
+    }
+
+    If there is a successful transaction against the order for which
+    this transaction was initiated, then it returns -
+    {
+        "error": "This order has already been paid for"
+    }
+
+    If none of the above conditions are true, fetches the updated
+    payment status from paytm and returns -
+    {
+        "payment_status": <payment_status>
+    }
+
+    Payment status -
+
+    Value | Meaning
+    0     | SUCCESSFUL
+    1     | PENDING
+    2     | INVALID
+    3     | FAILED
+
+    :return:
+    """
+    user_id = _decoded_user_id(request)
+    if not user_id:
+        return {'error': 'Authentication failed'}, ValidationError
+
+    txn_id = request.args.get('txn_id')
+    if not txn_id:
+        return {'error': 'Transaction id not found'}, ValidationError
+
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            'select order_id, payment_status from transactions '
+            'where id = %s',
+            (txn_id,)
+        )
+
+        if cur.rowcount == 0:
+            return {'error': 'Transaction id does not exist'}, ValidationError
+
+        row = cur.fetchone()
+        order_id = row[0]
+        payment_status = row[1]
+
+        cur.execute('select user_id from orders where id = %s', (order_id,))
+        if user_id != cur.fetchone()[0]:
+            return {'error': 'Authentication failed'}, ValidationError
+
+        # if the payment is not done or pending, only then we need to update the status
+        # otherwise, we already have the latest status
+        if payment_status != paytm.PaymentStatus.NOT_PAID.value \
+                and payment_status != paytm.PaymentStatus.PENDING.value:
+            return {'success': payment_status == paytm.PaymentStatus.SUCCESSFUL.value}
+
+        # check if there are successful transactions against this order id
+        cur.execute(
+            'select id from transactions '
+            'where order_id = %s '
+            'and id != %s '
+            'and payment_status = %s',
+            (order_id, txn_id, paytm.PaymentStatus.SUCCESSFUL.value)
+        )
+
+        if cur.rowcount != 0:
+            return {'error': 'This order has already been paid for. '
+                             'Please cancel the transaction on your end'}, ValidationError
+
+        updated_payment_status = paytm.payment_status(txn_id)
+
+        cur.execute(
+            'update transactions set payment_status = %s where id = %s',
+            (updated_payment_status.value, txn_id)
+        )
+
+        cur.execute(
+            'update orders set payment_status = %s where id = %s',
+            (updated_payment_status.value, order_id)
+        )
+
+        conn.commit()
+
+        return {
+            'payment_status': updated_payment_status.value
+        }
+
+
+class Order:
+    def __init__(self, order_id, menu_id, quantity, price=0, restaurant_id=None):
+        self.order_id = order_id
+        self.menu_id = menu_id
+        self.quantity = int(quantity)
+        self.price = float(price)
+        self.restaurant_id = restaurant_id
+
+
+@user.route("/order_items", methods=['POST'])
 def order_items():
     try:
         if not request.json:
-            return {'error': 'No json data found'}, ValidationError
+            return {"error": "Invalid Request/ No Json Data Found."}, ValidationError
         order_id = request.json["order_id"]
         order_list = request.json["order_list"]
-        list_of_orders = []
+        all_orders = []
+        restaurant_id_set = set()
         for orders in order_list:
-            list_of_orders.append(order(order_id, orders.get("menu_id"), orders.get("quantity")))
-        restaurant_id = list_of_orders[0].get_restaurant()
-        for element in list_of_orders:
-            try:
-                restaurant = element.get_restaurant()
-                price = element.set_price()
-                if element.validate_request() is not None or restaurant is TypeError or price is TypeError:
-                    raise TypeError
-                if restaurant_id != restaurant:
-                    raise AttributeError
-            except TypeError:
-                return {"error": "Query had some Invalid Inputs."}, ValidationError
-            except AttributeError:
-                return {"error": "Food Orders are from different restaurants"}, ValidationError
-        for element in list_of_orders:
-            try:
-                if element.set_order() is TypeError:
-                    raise TypeError
-            except TypeError:
-                return {"error": "Order wasn't placed because of Bad Credentials."}, ValidationError
-        return {"message": "request accepted."}, 200
+            current_order = Order(order_id, orders["menu_id"], orders["quantity"])
+            if current_order.order_id is None or current_order.menu_id is None \
+                    or current_order.quantity is None or 0 >= current_order.quantity > 16:
+                return {"error": "Invalid Order Parameters."}, ValidationError
+            # Validation of Request
+            with connection() as conn, conn.cursor() as cur:
+                cur.execute("SELECT restaurant_id from menu where id = %s ", current_order.menu_id)
+                restaurant_id = cur.fetchone()
+                if restaurant_id is None:
+                    return {"error": "Restaurant doesn't exists."}, ValidationError
+                current_order.restaurant_id = restaurant_id[0]
+                restaurant_id_set.add(current_order.restaurant_id)
+                if len(restaurant_id_set) > 1:
+                    return {"error": "Food can't be ordered from different locations."}, ValidationError
+                cur.execute("SELECT price from menu where id = %s ", current_order.menu_id)
+                price = cur.fetchone()
+                if price is None:
+                    return {"error": "Invalid Order Parameters."}, ValidationError
+                current_order.price = float(price[0]) * int(current_order.quantity)
+                all_orders.append(current_order)
+        for each in all_orders:
+            with connection() as conn, conn.cursor() as cur:
+                cur.execute("insert into order_items(order_id, menu_id, quantity, price) values "
+                            "(%s,%s,%s,%s) on duplicate key "
+                            "update quantity = quantity + %s, price = price + %s ",
+                            (each.order_id, each.menu_id, each.quantity, each.price, int(each.quantity),
+                             each.price)
+                            )
+                conn.commit()
+        return {"message": "Order Received."}, 200
+    except TypeError:
+        return {"error": "<write Error here.>"}
     except KeyError:
-        return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
+        return {"error": "Parameters missing in Request."}
