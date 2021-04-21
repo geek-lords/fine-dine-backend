@@ -1,14 +1,12 @@
 from uuid import uuid4
-
 import bcrypt
 import jwt
 import pymysql
 import requests
-from apschedular.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, request
 from jwt import InvalidSignatureError
-
 import paytm
 from config import jwt_secret, merchant_id
 from db_utils import connection
@@ -39,50 +37,6 @@ scheduler.start()
 ValidationError = 422
 
 MaxPasswordLength = 70
-
-
-class Order:
-    def __init__(self, order_id, menu_id, quantity):
-        self.order_id = order_id
-        self.menu_id = menu_id
-        self.quantity = int(quantity)
-
-    def set_price(self):
-        try:
-            with connection() as conn, conn.cursor() as cur:
-                cur.execute("select price from menu where id = %s", (self.menu_id,))
-                self.price = float(cur.fetchone()[0]) * self.quantity
-                return self.price
-        except TypeError:
-            return TypeError
-
-    def validate_request(self):
-        if self.order_id is None or self.menu_id is None or self.quantity is None or self.quantity <= 0:
-            raise ValidationError
-
-    def get_restaurant(self):
-        try:
-            with connection() as conn, conn.cursor() as cur:
-                cur.execute("select restaurant_id from menu where id = %s", (self.menu_id,))
-                restaurant_id = cur.fetchone()[0]
-                return restaurant_id
-        except TypeError:
-            return TypeError
-
-    def set_order(self):
-        try:
-            with connection() as conn, conn.cursor() as cur:
-                cur.execute(
-                    "insert into order_items(order_id, menu_id, quantity, price) "
-                    "values(%s, %s, %s, %s) on duplicate key "
-                    "update quantity = quantity + %s, price = price + %s ",
-                    (self.order_id, self.menu_id, self.quantity, self.price, int(self.quantity), float(self.price))
-                )
-                conn.commit()
-                return {"message": "Order Placed"}, 200
-        except TypeError as t:
-            print(t)
-            return TypeError
 
 
 def hash_password(password: str) -> str:
@@ -543,35 +497,56 @@ def update_payment_status():
         }
 
 
-@user.route("/order_items", methods=["POST"])
+class Order:
+    def __init__(self, order_id, menu_id, quantity, price=0, restaurant_id=None):
+        self.order_id = order_id
+        self.menu_id = menu_id
+        self.quantity = int(quantity)
+        self.price = float(price)
+        self.restaurant_id = restaurant_id
+
+
+@user.route("/order_items", methods=['POST'])
 def order_items():
     try:
         if not request.json:
-            return {'error': 'No json data found'}, ValidationError
+            return {"error": "Invalid Request/ No Json Data Found."}, ValidationError
         order_id = request.json["order_id"]
         order_list = request.json["order_list"]
-        list_of_orders = []
+        all_orders = []
+        restaurant_id_set = set()
         for orders in order_list:
-            list_of_orders.append(Order(order_id, orders.get("menu_id"), orders.get("quantity")))
-        restaurant_id = list_of_orders[0].get_restaurant()
-        for element in list_of_orders:
-            try:
-                restaurant = element.get_restaurant()
-                price = element.set_price()
-                if element.validate_request() is not None or restaurant is TypeError or price is TypeError:
-                    raise TypeError
-                if restaurant_id != restaurant:
-                    raise AttributeError
-            except TypeError:
-                return {"error": "Query had some Invalid Inputs."}, ValidationError
-            except AttributeError:
-                return {"error": "Food Orders are from different restaurants"}, ValidationError
-        for element in list_of_orders:
-            try:
-                if element.set_order() is TypeError:
-                    raise TypeError
-            except TypeError:
-                return {"error": "Order wasn't placed because of Bad Credentials."}, ValidationError
-        return {"message": "request accepted."}, 200
+            current_order = Order(order_id, orders["menu_id"], orders["quantity"])
+            if current_order.order_id is None or current_order.menu_id is None \
+                    or current_order.quantity is None or 0 >= current_order.quantity > 16:
+                return {"error": "Invalid Order Parameters."}, ValidationError
+            # Validation of Request
+            with connection() as conn, conn.cursor() as cur:
+                cur.execute("SELECT restaurant_id from menu where id = %s ", current_order.menu_id)
+                restaurant_id = cur.fetchone()
+                if restaurant_id is None:
+                    return {"error": "Restaurant doesn't exists."}, ValidationError
+                current_order.restaurant_id = restaurant_id[0]
+                restaurant_id_set.add(current_order.restaurant_id)
+                if len(restaurant_id_set) > 1:
+                    return {"error": "Food can't be ordered from different locations."}, ValidationError
+                cur.execute("SELECT price from menu where id = %s ", current_order.menu_id)
+                price = cur.fetchone()
+                if price is None:
+                    return {"error": "Invalid Order Parameters."}, ValidationError
+                current_order.price = float(price[0]) * int(current_order.quantity)
+                all_orders.append(current_order)
+        for each in all_orders:
+            with connection() as conn, conn.cursor() as cur:
+                cur.execute("insert into order_items(order_id, menu_id, quantity, price) values "
+                            "(%s,%s,%s,%s) on duplicate key "
+                            "update quantity = quantity + %s, price = price + %s ",
+                            (each.order_id, each.menu_id, each.quantity, each.price, int(each.quantity),
+                             each.price)
+                            )
+                conn.commit()
+        return {"message": "Order Received."}, 200
+    except TypeError:
+        return {"error": "<write Error here.>"}
     except KeyError:
-        return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
+        return {"error": "Parameters missing in Request."}
