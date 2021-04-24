@@ -9,12 +9,31 @@ from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, request
 from jwt import InvalidSignatureError
 
-from config import jwt_secret
+import paytm
+from config import jwt_secret, merchant_id
 from db_utils import connection
 
 MinPasswordLength = 5
 
 user = Blueprint('user', __name__)
+
+scheduler = BackgroundScheduler()
+
+
+def keep_server_alive():
+    requests.get(
+        'https://fine-dine-backend.herokuapp.com/api/v1/menu?restaurant_id=6902d892-4d75-44fe-85bd-b92a60260f70'
+    )
+    print('request sent')
+
+
+scheduler.add_job(
+    keep_server_alive,
+    'interval',
+    minutes=25,
+)
+
+scheduler.start()
 
 # HTTP error code for validation error
 ValidationError = 422
@@ -214,7 +233,6 @@ def get_menu():
     restaurant_id = request.args.get('restaurant_id')
     if not restaurant_id:
         return {'error': 'Invalid input. One or more parameters absent'}
-      
 
     with connection() as conn, conn.cursor() as cur:
         cur.execute(
