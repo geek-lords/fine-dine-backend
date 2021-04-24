@@ -8,7 +8,6 @@ hostname = os.getenv('DB_HOSTNAME')
 username = os.getenv('DB_USERNAME')
 password = os.getenv('DB_PASSWORD')
 database = os.getenv('DATABASE')
-
 jwt_secret = os.getenv('JWT_SECRET')
 
 merchant_id = os.getenv('MERCHANT_ID')
