@@ -1,5 +1,4 @@
 from uuid import uuid4
-
 import bcrypt
 import jwt
 import pymysql
@@ -16,56 +15,28 @@ MinPasswordLength = 5
 
 user = Blueprint('user', __name__)
 
+scheduler = BackgroundScheduler()
+
+
+def keep_server_alive():
+    requests.get(
+        'https://fine-dine-backend.herokuapp.com/api/v1/menu?restaurant_id=6902d892-4d75-44fe-85bd-b92a60260f70'
+    )
+    print('request sent')
+
+
+scheduler.add_job(
+    keep_server_alive,
+    'interval',
+    minutes=25,
+)
+
+scheduler.start()
+
 # HTTP error code for validation error
 ValidationError = 422
 
 MaxPasswordLength = 70
-
-
-class order:
-    def __init__(self, order_id, menu_id, quantity):
-        self.order_id = order_id
-        self.menu_id = menu_id
-        self.quantity = int(quantity)
-
-    def set_price(self):
-        try:
-            with connection() as conn, conn.cursor() as cur:
-                cur.execute("select price from menu where id = %s", (self.menu_id,))
-                self.price = float(cur.fetchone()[0]) * self.quantity
-                return self.price
-        except TypeError:
-            return TypeError
-
-    def validate_request(self):
-        if self.order_id is None or self.menu_id is None or self.quantity is None or self.quantity <= 0:
-            raise ValidationError
-
-    def get_restaurant(self):
-        try:
-            with connection() as conn, conn.cursor() as cur:
-                cur.execute("select restaurant_id from menu where id = %s", (self.menu_id,))
-                restaurant_id = cur.fetchone()[0]
-                return restaurant_id
-        except TypeError:
-            return TypeError
-
-    def set_order(self):
-        try:
-            with connection() as conn, conn.cursor() as cur:
-                restaurant = self.get_restaurant()
-                cur.execute("select tax from restaurant where id = %s", (restaurant,))
-                self.tax = float(cur.fetchone()[0])
-                cur.execute("insert into order_items values(%s, %s, %s, %s, %s) on duplicate key "
-                            "update quantity = quantity + %s, price = price + %s ",
-                            (self.order_id, self.menu_id, self.quantity, self.price, self.tax, int(self.quantity),
-                             float(self.price)))
-                conn.commit()
-                return {"message": "Order Placed"}, 200
-                # insert into hotels_table values(10, 11, 6, 60) on duplicate key update quantity = quantity + 6, price = price + 60;
-        except TypeError as t:
-            print(t)
-            return TypeError
 
 
 def hash_password(password: str) -> str:
@@ -80,18 +51,18 @@ def password_valid(password: str, hashed_password: str) -> bool:
 def create_user():
     """
     Creates user with name, email and password
-    
+
     Name must not be empty, email must be a valid email and password
     must be between ${MinPasswordLength} and ${MaxPasswordLength}
-    
-    Sample input - 
+
+    Sample input -
     {
         "name": "Hemil",
         "password": "abcdef",
         "email": "abc@def.com"
     }
-    
-    Sample output - 
+
+    Sample output -
     {
         "jwt_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
     }
@@ -221,6 +192,13 @@ def authenticate():
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
 
 
+# temporary
+@user.route('/validate_token')
+def validate_token():
+    user_id = jwt.decode(request.json['jwt'], jwt_secret, algorithms=['HS256'])['user_id']
+    return {'token': user_id}
+
+
 # decodes user id. In case of error, returns None
 def _decoded_user_id(_request):
     try:
@@ -234,33 +212,37 @@ def _decoded_user_id(_request):
 @user.route('/menu')
 def get_menu():
     """
-    url - /api/v1/menu?restaurant_id=jhcvxjdsvydsgvfshgho
+        url - /api/v1/menu?restaurant_id=jhcvxjdsvydsgvfshgho
 
-    sample output -
-    {
-        "menu": [
-            {
-                "id": 1,
-                "name": "name of menu item 1",
-                "description": "description of menu item 1",
-                "photo_url": "http://google.com"
-                "price": 50.5
-            },
-            {
-                "id": 2,
-                "name": "name of menu item 2",
-                "description": "description of menu item 2",
-                "photo_url": "http://google.com"
-                "price": 50.5
-            },
-        ],
-    }
-    :return:
-    """
+        Sample output -
+        {
+            "menu": [
+                {
+                    "id": 1,
+                    "name": "name of menu item 1",
+                    "description": "description of menu item 1",
+                    "photo_url": "http://google.com"
+                    "price": 50.5
+                },
+                {
+                    "id": 2,
+                    "name": "name of menu item 2",
+                    "description": "description of menu item 2",
+                    "photo_url": "http://google.com"
+                    "price": 50.5
+                },
+            ],
+        }
+
+        Sample error -
+        {
+            "error": "reason for error"
+        }
+        :return:
+        """
     restaurant_id = request.args.get('restaurant_id')
     if not restaurant_id:
         return {'error': 'Invalid input. One or more parameters absent'}
-      
 
     with connection() as conn, conn.cursor() as cur:
         cur.execute(
@@ -565,6 +547,6 @@ def order_items():
                 conn.commit()
         return {"message": "Order Received."}, 200
     except TypeError:
-        return {"error": "Type Error has occurred."}
+        return {"error": "<write Error here.>"}
     except KeyError:
-        return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
+        return {"error": "Parameters missing in Request."}
