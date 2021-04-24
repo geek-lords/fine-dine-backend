@@ -22,52 +22,6 @@ ValidationError = 422
 MaxPasswordLength = 70
 
 
-class order:
-    def __init__(self, order_id, menu_id, quantity):
-        self.order_id = order_id
-        self.menu_id = menu_id
-        self.quantity = int(quantity)
-
-    def set_price(self):
-        try:
-            with connection() as conn, conn.cursor() as cur:
-                cur.execute("select price from menu where id = %s", (self.menu_id,))
-                self.price = float(cur.fetchone()[0]) * self.quantity
-                return self.price
-        except TypeError:
-            return TypeError
-
-    def validate_request(self):
-        if self.order_id is None or self.menu_id is None or self.quantity is None or self.quantity <= 0:
-            raise ValidationError
-
-    def get_restaurant(self):
-        try:
-            with connection() as conn, conn.cursor() as cur:
-                cur.execute("select restaurant_id from menu where id = %s", (self.menu_id,))
-                restaurant_id = cur.fetchone()[0]
-                return restaurant_id
-        except TypeError:
-            return TypeError
-
-    def set_order(self):
-        try:
-            with connection() as conn, conn.cursor() as cur:
-                restaurant = self.get_restaurant()
-                cur.execute("select tax from restaurant where id = %s", (restaurant,))
-                self.tax = float(cur.fetchone()[0])
-                cur.execute("insert into order_items values(%s, %s, %s, %s, %s) on duplicate key "
-                            "update quantity = quantity + %s, price = price + %s ",
-                            (self.order_id, self.menu_id, self.quantity, self.price, self.tax, int(self.quantity),
-                             float(self.price)))
-                conn.commit()
-                return {"message": "Order Placed"}, 200
-                # insert into hotels_table values(10, 11, 6, 60) on duplicate key update quantity = quantity + 6, price = price + 60;
-        except TypeError as t:
-            print(t)
-            return TypeError
-
-
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
