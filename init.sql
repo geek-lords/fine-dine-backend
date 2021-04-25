@@ -11,12 +11,21 @@ create table users
 create table restaurant
 (
     id          varchar(36) primary key,
+<<<<<<< Updated upstream
     name        text not null,
     description text not null,
     photo_url   text not null,
     tax numeric(5,2) not null
 -- will add more things like co ordinates when we get to browse
 -- lets focus on core features first
+=======
+    name        text          not null,
+    description text          not null,
+    photo_url   text          not null,
+    tax_percent numeric(7, 2) not null,
+    admin_id varchar(36) not null
+
+>>>>>>> Stashed changes
 );
 
 
@@ -54,4 +63,28 @@ create table order_items
     price    numeric(7, 2) not null,
     primary key(order_id, menu_id);
 );
+
+<<<<<<< Updated upstream
+=======
+create table tables
+(
+    name          text        not null,
+    restaurant_id varchar(36) not null references restaurant (id)
+);
+
+create table transactions
+(
+    id             varchar(36) primary key,
+    order_id       varchar(36)   not null references orders (id),
+    price          numeric(7, 2) not null,
+    payment_status int           not null
+);
+
+create table admins (
+    id varchar(36) primary key,
+    name text(50) not null,
+    hashed_password text not null,
+    email_id varchar(50) unique,
+    phone varchar(13) unique
+    );
 
