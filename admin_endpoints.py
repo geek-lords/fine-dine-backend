@@ -1,3 +1,5 @@
+import io
+
 import jwt
 import qrcode
 from flask import Blueprint, request
@@ -62,8 +64,15 @@ def generate_code():
         # logo_display.thumbnail((120, 120))
         # logo_pos = ((img.size[0] - logo_display.size[0]) // 2, (img.size[1] - logo_display.size[1]) // 2)
         # img.paste(logo_display, logo_pos)
-        with open("qr_code.png", "wb") as image:
-            img.save(image)
+
+        img_byte_arr = io.BytesIO()
+        img.save(img_byte_arr)
+
+        return {"qr_code": img_byte_arr.getvalue()}
 
     except AttributeError:
         return {'error': "Incorrect/Invalid Arguments."}
+
+
+if __name__ == '__main__':
+    img = qrcode.make('some data')
