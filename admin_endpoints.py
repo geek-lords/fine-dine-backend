@@ -1,4 +1,3 @@
-
 from flask import Blueprint
 
 from flask import Blueprint, request
@@ -17,10 +16,8 @@ from db_utils import connection
 
 admin = Blueprint('admin', __name__)
 
-
 # HTTP Errors
 ValidationError = 422
-
 
 
 @admin.route('/version')
@@ -73,10 +70,6 @@ def generate_code():
         # logo_display.thumbnail((120, 120))
         # logo_pos = ((img.size[0] - logo_display.size[0]) // 2, (img.size[1] - logo_display.size[1]) // 2)
         # img.paste(logo_display, logo_pos)
-        with open(img, "rb") as image:
-            f = image.read()
-            b = bytearray(f)
-            print(b[0])
 
     except AttributeError:
         return {'error': "Incorrect/Invalid Arguments."}
