@@ -1,23 +1,20 @@
-from flask import Blueprint
-
-from flask import Blueprint, request
-import requests
-import qrcode
-import io
-from uuid import uuid4
-from random import randint
-from PIL import Image
-import pymysql
-from jwt import InvalidSignatureError
+from io import BytesIO
+import base64
 import jwt
-from config import jwt_secret
+import qrcode
+from flask import Blueprint, request, send_from_directory
+from jwt import InvalidSignatureError
+from PIL import Image
+from werkzeug.urls import url_encode
 
+from config import jwt_secret
 from db_utils import connection
 
 admin = Blueprint('admin', __name__)
 
 # HTTP Errors
 ValidationError = 422
+base_url = "http://localhost:5000/api/v1/"
 
 
 @admin.route('/version')
@@ -44,32 +41,61 @@ def authenticate(_requests):
         return {'error': "Requested User isn't Admin."}
 
 
-@admin.route("/code", methods=['GET'])
-def generate_code():
+@admin.route('/code', methods=['GET'])
+def generate_qr():
     try:
         admin_id = authenticate(request)
-        restaurant_id = request.args.get('restaurant_id')
-        table_id = request.args.get('table_id')
+        restaurant_id, table_id = request.args.get('restaurant_id'), request.args.get('restaurant_id')
         if admin_id is None or restaurant_id is None or table_id is None:
             raise TypeError
-        with connection() as conn, conn.cursor() as cur:
-            cur.execute("Select name from restaurant where id = %s && admin_id = %s", (restaurant_id, admin_id,))
-            if cur.rowcount == 0:
-                return {'error': "Restaurant and Admin Pair doesn't exists."}
-            cur.execute("Select * from tables where restaurant_id = %s && name = %s", (restaurant_id, table_id))
-            if cur.rowcount == 0:
-                return {'error': "Restaurant and Table Pair doesn't exists."}
-        qr = qrcode.QRCode(version=5, error_correction=qrcode.constants.ERROR_CORRECT_H,
-                           box_size=15,
-                           border=4, )
+        image = qrcode.make(base_url + "/menu?" + url_encode({'restaurant_id': restaurant_id, 'table': table_id}))
 
-        qr.add_data("http://localhost:5000/api/v1/menu?restaurant_id=%s&table_id=%s".format(restaurant_id, table_id))
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
-        # logo_display = Image.open('statics/Geek-Lords.jpeg')
-        # logo_display.thumbnail((120, 120))
-        # logo_pos = ((img.size[0] - logo_display.size[0]) // 2, (img.size[1] - logo_display.size[1]) // 2)
-        # img.paste(logo_display, logo_pos)
+        # qr = qrcode.QRCode(version=5, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=15, border=4, )
 
-    except AttributeError:
-        return {'error': "Incorrect/Invalid Arguments."}
+        # qr.add_data(base_url + "/menu?" + url_encode({'restaurant_id': restaurant_id, 'table': table_id}))
+        # qr.make(fit=True)
+        # image = qr.make_image(fill_color="black", back_color="white").convert('RGB')
+        image.save("/statics/new.png")
+        return send_from_directory("/statics", filename='new.png')
+    except TypeError:
+        return {'error': "Invalid Credentials Found."}
+
+
+# @admin.route("/code", methods=['GET'])
+# def generate_code():
+#     try:
+#         admin_id = authenticate(request)
+#         restaurant_id = request.args.get('restaurant_id')
+#         table_id = request.args.get('table_id')
+#         if admin_id is None or restaurant_id is None or table_id is None:
+#             raise TypeError
+#         with connection() as conn, conn.cursor() as cur:
+#             cur.execute("Select name from restaurant where id = %s && admin_id = %s", (restaurant_id, admin_id,))
+#             if cur.rowcount == 0:
+#                 return {'error': "Restaurant and Admin Pair doesn't exists."}
+#             cur.execute("Select * from tables where restaurant_id = %s && name = %s", (restaurant_id, table_id))
+#             if cur.rowcount == 0:
+#                 return {'error': "Restaurant and Table Pair doesn't exists."}
+#         qr = qrcode.QRCode(version=5, error_correction=qrcode.constants.ERROR_CORRECT_H,
+#                            box_size=15,
+#                            border=4, )
+#
+#         qr.add_data("http://localhost:5000/api/v1/menu?restaurant_id=%s&table_id=%s".format(restaurant_id, table_id))
+#         qr.make(fit=True)
+#         img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
+#         logo_display = Image.open('/home/sarvesh/PycharmProjects/fine-dine-backend/statics/Geek-Lords.jpeg')
+#         logo_display.thumbnail((120, 120))
+#         logo_pos = ((img.size[0] - logo_display.size[0]) // 2, (img.size[1] - logo_display.size[1]) // 2)
+#         img.paste(logo_display, logo_pos)
+#
+#         img_byte_arr = io.BytesIO()
+#         img.save(img_byte_arr)
+#
+#         return {"qr_code": img_byte_arr.getvalue()}
+#
+#     except AttributeError:
+#         return {'error': "Incorrect/Invalid Arguments."}
+
+
+if __name__ == '__main__':
+    img = qrcode.make('some data')
