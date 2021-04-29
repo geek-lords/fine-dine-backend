@@ -7,6 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, request
 from jwt import InvalidSignatureError
+
 import paytm
 from config import jwt_secret, merchant_id
 from db_utils import connection
@@ -547,6 +548,7 @@ def order_items():
                 conn.commit()
         return {"message": "Order Received."}, 200
     except TypeError:
-        return {"error": "Type Error has occurred."}
+        return {"error": "<write Error here.>"}
     except KeyError:
-        return {"error": "Parameters missing in Request."}
+        return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
+

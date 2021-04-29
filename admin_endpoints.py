@@ -14,6 +14,7 @@ admin = Blueprint('admin', __name__)
 ValidationError = 422
 
 
+
 @admin.route('/version')
 def version():
     with connection() as conn, conn.cursor() as cur:
@@ -21,6 +22,12 @@ def version():
         return {
             'version': cur.fetchone()[0],
         }
+
+
+@admin.route("/generate_qr", methods=['GET'])
+def generate_qr():
+    if not request.json:
+        return {'error': 'No json data found'}, ValidationError
 
 
 def authenticate(_requests):
