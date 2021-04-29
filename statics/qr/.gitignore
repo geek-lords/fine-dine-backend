@@ -1,0 +1,8 @@
+# The directory qr needs to be kept in the folder structure of git.
+# But all its contents do not need to be kept. If you ignore everything
+# in a directory, the directory is not kept in git.
+#
+# So I added a gitigore with * which means ignore everything in this
+# directory. But this gitignore is not ignored. qr directory is not
+# ignored because it has the .gitignore file
+*
