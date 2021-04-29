@@ -11,19 +11,11 @@ create table users
 create table restaurant
 (
     id          varchar(36) primary key,
-<<<<<<< HEAD
-    name        text not null,
-    description text not null,
-    photo_url   text not null,
-    tax numeric(5,2) not null
-    admin_id varchar(36) not null
-=======
     name        text          not null,
     description text          not null,
     photo_url   text          not null,
     tax_percent numeric(7, 2) not null,
     admin_id    varchar(36)   not null
->>>>>>> 517444da9d8d7ce4f1075bb8f35a7a7ea0025b3b
 );
 -- will add more things like co ordinates when we get to browse
 -- lets focus on core features first

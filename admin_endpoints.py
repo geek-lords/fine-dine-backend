@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 import json
 from uuid import uuid4
 
@@ -91,4 +89,3 @@ def generate_code():
 
 if __name__ == '__main__':
     image = qrcode.make('some data')
->>>>>>> 517444da9d8d7ce4f1075bb8f35a7a7ea0025b3b
