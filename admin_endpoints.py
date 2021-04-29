@@ -1,9 +1,10 @@
-import io
+from uuid import uuid4
 
 import jwt
 import qrcode
-from flask import Blueprint, request
+from flask import Blueprint, request, send_from_directory
 from jwt import InvalidSignatureError
+from werkzeug.urls import url_encode
 
 from config import jwt_secret
 from db_utils import connection
@@ -12,7 +13,6 @@ admin = Blueprint('admin', __name__)
 
 # HTTP Errors
 ValidationError = 422
-
 
 
 @admin.route('/version')
@@ -32,8 +32,9 @@ def generate_qr():
 
 def authenticate(_requests):
     try:
-        admin_id = jwt.decode(_requests.headers['X-Auth-Token'], jwt_secret, algorithms=['HS256'])['user_id']
-        is_admin = jwt.decode(_requests.headers['X-Auth-Token'], jwt_secret, algorithms=['HS256'])['is_admin']
+        decoded_jwt = jwt.decode(_requests.headers['X-Auth-Token'], jwt_secret, algorithms=['HS256'])
+        admin_id = decoded_jwt['user_id']
+        is_admin = decoded_jwt['is_admin']
         if not is_admin:
             raise ValidationError
         return admin_id
@@ -50,32 +51,26 @@ def generate_code():
     try:
         admin_id = authenticate(request)
         restaurant_id = request.args.get('restaurant_id')
-        table_id = request.args.get('table_id')
-        if admin_id is None or restaurant_id is None or table_id is None:
+        table = request.args.get('table')
+
+        if admin_id is None or restaurant_id is None or table is None:
             raise TypeError
         with connection() as conn, conn.cursor() as cur:
             cur.execute("Select name from restaurant where id = %s && admin_id = %s", (restaurant_id, admin_id,))
             if cur.rowcount == 0:
                 return {'error': "Restaurant and Admin Pair doesn't exists."}
-            cur.execute("Select * from tables where restaurant_id = %s && name = %s", (restaurant_id, table_id))
+            cur.execute("Select * from tables where restaurant_id = %s && name = %s", (restaurant_id, table))
             if cur.rowcount == 0:
                 return {'error': "Restaurant and Table Pair doesn't exists."}
-        qr = qrcode.QRCode(version=5, error_correction=qrcode.constants.ERROR_CORRECT_H,
-                           box_size=15,
-                           border=4, )
 
-        qr.add_data("http://localhost:5000/api/v1/menu?restaurant_id=%s&table_id=%s".format(restaurant_id, table_id))
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
-        # logo_display = Image.open('statics/Geek-Lords.jpeg')
-        # logo_display.thumbnail((120, 120))
-        # logo_pos = ((img.size[0] - logo_display.size[0]) // 2, (img.size[1] - logo_display.size[1]) // 2)
-        # img.paste(logo_display, logo_pos)
+        params = {'restaurant_id': restaurant_id, 'table': table}
+        img = qrcode.make('http://localhost:5000/api/v1/menu?' + url_encode(params))
 
-        img_byte_arr = io.BytesIO()
-        img.save(img_byte_arr)
-
-        return {"qr_code": img_byte_arr.getvalue()}
+        # if two people request qr code at almost same time, using the
+        # same file will corrupt at least one response
+        filename = f'{restaurant_id}-{table}-{uuid4()}.png'
+        img.save('statics/qr/' + filename)
+        return send_from_directory('statics/qr', filename=filename, mimetype='image/png')
 
     except AttributeError:
         return {'error': "Incorrect/Invalid Arguments."}
