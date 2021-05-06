@@ -275,6 +275,23 @@ def get_menu():
 
 @user.route("/order", methods=["POST"])
 def create_order():
+    """
+    Create an order.
+
+    url - /api/v1/order?restaurant_id=<restaurant id>&table=<table>
+    Headers - X-Auth-Token: <jwt>
+
+    Sample error -
+    {
+        "error": "reason for error"
+    }
+
+    Sample output -
+    {
+        "order_id": "38trfghere yfrguoi rgrgg",
+        "tax_percent": 5.5
+    }
+    """
     try:
         user_id = _decoded_user_id(request)
         if not user_id:
@@ -324,6 +341,36 @@ def create_order():
 
 @user.route('/checkout', methods=['POST'])
 def checkout():
+    """
+    Checkout an order and initiate payment for the same
+
+    url - /api/v1/checkout/order_id=<your order id>
+    Headers - X-Auth-Token: <jwt>
+
+    This end point has no body
+
+    Sample output -
+    {
+        "amount": "1416.0000",
+        "callback_url": "https://securegw-stage.paytm.in/theia/paytmCallback?ORDER_ID=db42e50d-ddae-4e7f-920e-2ce9cc61ef33",
+        "m_id": "ZSPJRo48452035979501",
+        "token": "8c7995c88874481380e0c83979d7f9cb1620305077291",
+        "txn_id": "db42e50d-ddae-4e7f-920e-2ce9cc61ef33"
+    }
+
+    amount, token, callback url are passes as is to paytm client
+    - m_id is the merchant id
+    - token is the transaction token.
+    - txn_id is what paytm calls order id. I didn't use order id because
+    for us order id is the id of the order we are paying for and so,
+    it would be confusing.
+
+
+    Sample error -
+    {
+        "error": "reason for error"
+    }
+    """
     order_id = request.args.get('order_id')
     if not order_id:
         return {'error': 'Order id not found'}, ValidationError
@@ -397,10 +444,16 @@ def checkout():
         }
 
 
+# todo: fix too many output variations
 @user.route('/update_payment_status', methods=['POST'])
 def update_payment_status():
     """
     Updates transaction status for the given transaction id
+
+    url - /api/v1/update_payment_status?txn_id=<txn_id>
+    Headers - X-Auth-Token: <jwt>
+
+    Sample outputs -
 
     If the payment status is set to successful in the database, returns -
     {
@@ -513,6 +566,36 @@ class Order:
 
 @user.route("/order_items", methods=['POST'])
 def order_items():
+    """
+    Add items to order.
+
+    url - /api/v1/order_items?order_id=jhcvxjdsvydsgvfshgho
+    Headers - X-Auth-Token: <jwt>
+
+    sample input -
+    {
+        "order_list": [
+            {
+                "menu_id": 1,
+                "quantity": 2
+            },
+            {
+                "menu_id": 2,
+                "quantity": 3
+            }
+        ]
+    }
+
+    sample output -
+    {
+        "success": true
+    }
+
+    sample error -
+    {
+        "error": "reason for error"
+    }
+    """
     try:
         if not request.json:
             return {"error": "Invalid Request/ No Json Data Found."}, ValidationError
