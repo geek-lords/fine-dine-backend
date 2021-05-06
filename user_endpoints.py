@@ -444,7 +444,6 @@ def checkout():
         }
 
 
-# todo: fix too many output variations
 @user.route('/update_payment_status', methods=['POST'])
 def update_payment_status():
     """
@@ -453,37 +452,25 @@ def update_payment_status():
     url - /api/v1/update_payment_status?txn_id=<txn_id>
     Headers - X-Auth-Token: <jwt>
 
-    Sample outputs -
+    Sample output -
 
-    If the payment status is set to successful in the database, returns -
-    {
-        "success": true
-    }
-
-    If the payment status is set to failed or invalid in database, returns -
-    {
-        "success": false
-    }
-
-    If there is a successful transaction against the order for which
-    this transaction was initiated, then it returns -
-    {
-        "error": "This order has already been paid for"
-    }
-
-    If none of the above conditions are true, fetches the updated
-    payment status from paytm and returns -
     {
         "payment_status": <payment_status>
     }
 
-    Payment status -
+    Where payment status is one of -
 
     Value | Meaning
     0     | SUCCESSFUL
     1     | PENDING
     2     | INVALID
     3     | FAILED
+
+    If there is a successful transaction against the order for which
+    this transaction was initiated, then it returns -
+    {
+        "error": "This order has already been paid for"
+    }
 
     :return:
     """
@@ -517,7 +504,7 @@ def update_payment_status():
         # otherwise, we already have the latest status
         if payment_status != paytm.PaymentStatus.NOT_PAID.value \
                 and payment_status != paytm.PaymentStatus.PENDING.value:
-            return {'success': payment_status == paytm.PaymentStatus.SUCCESSFUL.value}
+            return {'payment_status': payment_status}
 
         # check if there are successful transactions against this order id
         cur.execute(
