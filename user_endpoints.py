@@ -499,12 +499,16 @@ def update_payment_status():
 
 
 class Order:
-    def __init__(self, order_id, menu_id, quantity, price=0, restaurant_id=None):
+    def __init__(self, order_id, menu_id, quantity, price=0):
         self.order_id = order_id
         self.menu_id = menu_id
         self.quantity = int(quantity)
         self.price = float(price)
-        self.restaurant_id = restaurant_id
+
+    def is_valid(self):
+        return self.menu_id is not None \
+               and self.quantity is not None \
+               and (0 < self.quantity < 16)
 
 
 @user.route("/order_items", methods=['POST'])
@@ -512,43 +516,75 @@ def order_items():
     try:
         if not request.json:
             return {"error": "Invalid Request/ No Json Data Found."}, ValidationError
-        order_id = request.json["order_id"]
-        order_list = request.json["order_list"]
-        all_orders = []
-        restaurant_id_set = set()
-        for orders in order_list:
-            current_order = Order(order_id, orders["menu_id"], orders["quantity"])
-            if current_order.order_id is None or current_order.menu_id is None \
-                    or current_order.quantity is None or 0 >= current_order.quantity > 16:
-                return {"error": "Invalid Order Parameters."}, ValidationError
-            # Validation of Request
-            with connection() as conn, conn.cursor() as cur:
-                cur.execute("SELECT restaurant_id from menu where id = %s ", current_order.menu_id)
-                restaurant_id = cur.fetchone()
-                if restaurant_id is None:
-                    return {"error": "Restaurant doesn't exists."}, ValidationError
-                current_order.restaurant_id = restaurant_id[0]
-                restaurant_id_set.add(current_order.restaurant_id)
-                if len(restaurant_id_set) > 1:
-                    return {"error": "Food can't be ordered from different locations."}, ValidationError
-                cur.execute("SELECT price from menu where id = %s ", current_order.menu_id)
-                price = cur.fetchone()
-                if price is None:
-                    return {"error": "Invalid Order Parameters."}, ValidationError
-                current_order.price = float(price[0]) * int(current_order.quantity)
-                all_orders.append(current_order)
-        for each in all_orders:
-            with connection() as conn, conn.cursor() as cur:
-                cur.execute("insert into order_items(order_id, menu_id, quantity, price) values "
-                            "(%s,%s,%s,%s) on duplicate key "
-                            "update quantity = quantity + %s, price = price + %s ",
-                            (each.order_id, each.menu_id, each.quantity, each.price, int(each.quantity),
-                             each.price)
-                            )
-                conn.commit()
-        return {"message": "Order Received."}, 200
-    except TypeError:
-        return {"error": "<write Error here.>"}
-    except KeyError:
-        return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
 
+        order_id = request.args.get("order_id")
+
+        if not order_id:
+            return {'error': 'Invalid request'}, ValidationError
+
+        user_id = _decoded_user_id(request)
+        if not user_id:
+            return {'error': 'Authentication error'}, ValidationError
+
+        all_orders = list(map(lambda json: Order(order_id, json["menu_id"], json["quantity"]),
+                              request.json['order_list']))
+
+        if len(all_orders) == 0:
+            return {'error': 'order items cannot be empty'}, ValidationError
+
+        for order in all_orders:
+            if not order.is_valid():
+                return {"error": "Invalid input"}, ValidationError
+
+        menu_ids = tuple(map(lambda order: order.menu_id, all_orders))
+
+        if len(set(menu_ids)) != len(menu_ids):
+            return {'error': 'Menu id cannot be repeated'}, ValidationError
+
+        with connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                'select user_id from orders where id = %s',
+                (order_id,)
+            )
+
+            if cur.rowcount == 0:
+                return {'error': 'No such order found'}, ValidationError
+
+            if cur.fetchone()[0] != user_id:
+                return {'error': 'Authorization error'}, ValidationError
+
+            cur.execute('select id, price, restaurant_id from menu where id in %s', (menu_ids,))
+            rows = cur.fetchall()
+            restaurant_ids = list(map(lambda row: row[2], rows))
+
+            if len(restaurant_ids) == 0:
+                return {'error': 'Menu id does not exist'}, ValidationError
+
+            if len(set(restaurant_ids)) != 1:
+                return {'error': 'Cannot order from multiple restaurants'}, ValidationError
+
+            if len(restaurant_ids) != len(menu_ids):
+                return {'error': 'One or more menu ids does not exist'}, ValidationError
+
+            prices = {}
+            for id, price, _ in rows:
+                prices[id] = float(price)
+
+            for order in all_orders:
+                order.price = prices[id] * order.quantity
+
+            # execute many raises type error for some reason
+            for order in all_orders:
+                cur.execute(
+                    "insert into order_items(order_id, menu_id, quantity, price) values "
+                    "(%s,%s,%s,%s) on duplicate key "
+                    "update quantity = quantity + %s, price = price + %s ",
+                    (order.order_id, order.menu_id, order.quantity,
+                     order.price, order.quantity, order.price)
+                )
+
+            conn.commit()
+
+        return {"success": True}
+    except (KeyError, TypeError):
+        return {'error': 'Invalid input'}, ValidationError
