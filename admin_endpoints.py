@@ -148,5 +148,19 @@ def create_admin():
         return {"error": "Contact Information already exists."}
 
 
+@admin.route("/authenticate_admin", methods=['POST'])
+def authenticate_user():
+    """
+        This function is about authenticating if admin trying to log-in is valid/exists or not.
+        Sample Input:   {
+                            "email":"real@gmail.com",
+                            "password":"anyValidPassword"
+                        }
+        Sample Output:  {
+                            "jwt_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
+                        }
+    """
+
+
 if __name__ == '__main__':
     image = qrcode.make('some data')
