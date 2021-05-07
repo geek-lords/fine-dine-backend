@@ -127,7 +127,7 @@ def create_admin():
             return {"error": "Length of Password should be between 6 to 70."}, ValidationError
         hashed_password = hash_password(password)
 
-        if False in list(map(lambda x: x.isdigit(), phone)) or len(phone) != 10:
+        if not phone.isdigit() or len(phone) != 10:
             return {"error": "Invalid Phone Number."}, ValidationError
         user_id = str(uuid4())
         with connection() as conn, conn.cursor() as cur:
