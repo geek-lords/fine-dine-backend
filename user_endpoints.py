@@ -607,6 +607,35 @@ def get_order_history():
 
 @user.route("/order_history/<order_id>", methods=['POST'])
 def individual_order_history(order_id):
+    """
+        The request for this should be sent on URL/order_history/<order_id>
+        Sample Input :
+                    {
+                        "jwt_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
+                    }
+        Sample Output:
+                    {
+                      "bill": [
+                                {
+                                  "name": "Wada Sambar",
+                                  "price": 90.00,
+                                  "quantity": 10
+                                },
+                                {
+                                  "name": "Tea",
+                                  "price": 15.00,
+                                  "quantity": 3
+                                }
+                              ],
+                      "restaurant_details": {
+                            "name": "Joshi Bhojangrih",
+                            "photo_url": "goal.jpeg",
+                            "price_excluding_tax": 650.00,
+                            "tax_percent": 18.00,
+                            "time_and_date": "Sat, 08 May 2021 03:44:09 GMT"
+                                            }
+                    }
+    """
     try:
         user_id = _decoded_user_id(request)
         if user_id is None:
