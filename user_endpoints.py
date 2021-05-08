@@ -603,3 +603,33 @@ def get_order_history():
 
     except KeyError:
         return {"error": "User Token expected."}
+
+
+@user.route("/order_history/<order_id>", methods=['POST'])
+def individual_order_history(order_id):
+    try:
+        user_id = _decoded_user_id(request)
+        if user_id is None:
+            return {"error": "User ID can't be None."}
+        #     Authenticating the Order and User Relation
+        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
+            cur.execute("Select user_id from orders where id = %s", order_id)
+            order_user_id = cur.fetchone()['user_id']
+            if str(order_user_id) != user_id:
+                return {"error": "Invalid Requesting User."}
+            # Get Overall Information
+            cur.execute(
+                "Select restaurant.name , restaurant.photo_url, restaurant.tax_percent ,orders.price_excluding_tax, orders.time_and_date from restaurant "
+                "join orders on restaurant.id = orders.restaurant_id where orders.id = %s ",
+                order_id)
+            if cur.rowcount < 1:
+                return {"error": "No Orders Found."}
+            overall_details = cur.fetchone()
+            cur.execute("select menu.name, menu.price, order_items.quantity from menu join order_items on "
+                        "menu.id = order_items.menu_id where order_items.order_id = %s ", order_id)
+            if cur.rowcount < 1:
+                return {"error": "Invalid Order Request"}
+            bill = cur.fetchall()
+            return {"bill": bill, "restaurant_details": overall_details}
+    except KeyError:
+        return {"error": "Invalid Parameters found. "}
