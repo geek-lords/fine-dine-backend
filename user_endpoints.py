@@ -561,41 +561,45 @@ def get_order_history():
                             "jwt_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
                         }
         Sample Output(List of all orders) :
-                        {
-                        "history": [
-                                {
-                                    "name_of_restaurant":"Shivsagar Restaurant",
-                                    "total_bill":"420 Rupees",
-                                    "date_time":"07/05/2021 23:44:55"
-                                },
-                                {
-                                    "name_of_restaurant":"Shivsagar Restaurant",
-                                    "total_bill":"420 Rupees",
-                                    "date_time":"12/05/2021 23:44:55"
-                                }
-                            ]
-                        }
+                    {
+                      "history":
+                        [
+                            {
+                              "id": "3a9d8156-6c65-4a61-9f19-df612251223b",
+                              "price_excluding_tax": 650.00,
+                              "restaurant_id": "Joshi Bhojangrih",
+                              "time_and_date": "Sat, 08 May 2021 03:44:09 GMT"
+                            },
+                            {
+                              "id": "3a9d8156-6c65-4a61-9f19-df612254223b",
+                              "price_excluding_tax": 350.00,
+                              "restaurant_id": "Joshi Bhojangrih",
+                              "time_and_date": "Sat, 08 May 2021 03:44:48 GMT"
+                            }
+                        ]
+                    }
+
     """
     try:
         user_id = _decoded_user_id(request)
         if user_id is None:
             return {"error": "Username can't be None."}
-        with connection() as conn, conn.cursor() as cur:
+        print(user_id)
+        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute(
-                "Select restaurant_id,price_excluding_tax, time_and_date from orders where user_id = %s "
+                "Select id,restaurant_id,price_excluding_tax, time_and_date from orders where user_id = %s "
                 "order by time_and_date asc;"
                 , user_id)
             if cur.rowcount < 1:
                 return {"error": "No Previous Orders Found."}
             order_history = cur.fetchall()
             print(order_history)
-            res = [list(ele) for ele in list(order_history)]
-            for individual in res:
-                cur.execute("select name from restaurant where id = %s", individual[0])
+            for individual in order_history:
+                cur.execute("select name from restaurant where id = %s", individual.get('restaurant_id'))
                 if cur.rowcount < 1:
                     return {"error": "Previous orders misplaced."}
-                individual[0] = cur.fetchone()[0]
-            return {"history": res}
+                individual['restaurant_id'] = cur.fetchone().get('name')
+            return {"history": order_history}
 
     except KeyError:
         return {"error": "User Token expected."}
