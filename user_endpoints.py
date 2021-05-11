@@ -341,36 +341,6 @@ def create_order():
 
 @user.route('/checkout', methods=['POST'])
 def checkout():
-    """
-    Checkout an order and initiate payment for the same
-
-    url - /api/v1/checkout/order_id=<your order id>
-    Headers - X-Auth-Token: <jwt>
-
-    This end point has no body
-
-    Sample output -
-    {
-        "amount": "1416.0000",
-        "callback_url": "https://securegw-stage.paytm.in/theia/paytmCallback?ORDER_ID=db42e50d-ddae-4e7f-920e-2ce9cc61ef33",
-        "m_id": "ZSPJRo48452035979501",
-        "token": "8c7995c88874481380e0c83979d7f9cb1620305077291",
-        "txn_id": "db42e50d-ddae-4e7f-920e-2ce9cc61ef33"
-    }
-
-    amount, token, callback url are passes as is to paytm client
-    - m_id is the merchant id
-    - token is the transaction token.
-    - txn_id is what paytm calls order id. I didn't use order id because
-    for us order id is the id of the order we are paying for and so,
-    it would be confusing.
-
-
-    Sample error -
-    {
-        "error": "reason for error"
-    }
-    """
     order_id = request.args.get('order_id')
     if not order_id:
         return {'error': 'Order id not found'}, ValidationError
@@ -504,7 +474,7 @@ def update_payment_status():
         # otherwise, we already have the latest status
         if payment_status != paytm.PaymentStatus.NOT_PAID.value \
                 and payment_status != paytm.PaymentStatus.PENDING.value:
-            return {'payment_status': payment_status}
+            return {'success': payment_status == paytm.PaymentStatus.SUCCESSFUL.value}
 
         # check if there are successful transactions against this order id
         cur.execute(
@@ -658,3 +628,113 @@ def order_items():
         return {"success": True}
     except (KeyError, TypeError):
         return {'error': 'Invalid input'}, ValidationError
+
+@user.route("/order_history", methods=['POST'])
+def get_order_history():
+    """
+        This route shows order history for a user.
+        Sample Input :  {
+                            "jwt_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
+                        }
+        Sample Output(List of all orders) :
+                    {
+                      "history":
+                        [
+                            {
+                              "id": "3a9d8156-6c65-4a61-9f19-df612251223b",
+                              "price_excluding_tax": 650.00,
+                              "restaurant_id": "Joshi Bhojangrih",
+                              "time_and_date": "Sat, 08 May 2021 03:44:09 GMT"
+                            },
+                            {
+                              "id": "3a9d8156-6c65-4a61-9f19-df612254223b",
+                              "price_excluding_tax": 350.00,
+                              "restaurant_id": "Joshi Bhojangrih",
+                              "time_and_date": "Sat, 08 May 2021 03:44:48 GMT"
+                            }
+                        ]
+                    }
+
+    """
+    try:
+        user_id = _decoded_user_id(request)
+        if user_id is None:
+            return {"error": "Username can't be None."}
+        print(user_id)
+        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
+            cur.execute(
+                "Select id,restaurant_id,price_excluding_tax, time_and_date from orders where user_id = %s "
+                "order by time_and_date asc;"
+                , user_id)
+            if cur.rowcount < 1:
+                return {"error": "No Previous Orders Found."}
+            order_history = cur.fetchall()
+            print(order_history)
+            for individual in order_history:
+                cur.execute("select name from restaurant where id = %s", individual.get('restaurant_id'))
+                if cur.rowcount < 1:
+                    return {"error": "Previous orders misplaced."}
+                individual['restaurant_id'] = cur.fetchone().get('name')
+            return {"history": order_history}
+
+    except KeyError:
+        return {"error": "User Token expected."}
+
+
+@user.route("/order_history/<order_id>", methods=['POST'])
+def individual_order_history(order_id):
+    """
+        The request for this should be sent on URL/order_history/<order_id>
+        Sample Input :
+                    {
+                        "jwt_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
+                    }
+        Sample Output:
+                    {
+                      "bill": [
+                                {
+                                  "name": "Wada Sambar",
+                                  "price": 90.00,
+                                  "quantity": 10
+                                },
+                                {
+                                  "name": "Tea",
+                                  "price": 15.00,
+                                  "quantity": 3
+                                }
+                              ],
+                      "restaurant_details": {
+                            "name": "Joshi Bhojangrih",
+                            "photo_url": "goal.jpeg",
+                            "price_excluding_tax": 650.00,
+                            "tax_percent": 18.00,
+                            "time_and_date": "Sat, 08 May 2021 03:44:09 GMT"
+                                            }
+                    }
+    """
+    try:
+        user_id = _decoded_user_id(request)
+        if user_id is None:
+            return {"error": "User ID can't be None."}
+        #     Authenticating the Order and User Relation
+        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
+            cur.execute("Select user_id from orders where id = %s", order_id)
+            order_user_id = cur.fetchone()['user_id']
+            if str(order_user_id) != user_id:
+                return {"error": "Invalid Requesting User."}
+            # Get Overall Information
+            cur.execute(
+                "Select restaurant.name , restaurant.photo_url, restaurant.tax_percent ,orders.price_excluding_tax, orders.time_and_date from restaurant "
+                "join orders on restaurant.id = orders.restaurant_id where orders.id = %s ",
+                order_id)
+            if cur.rowcount < 1:
+                return {"error": "No Orders Found."}
+            overall_details = cur.fetchone()
+            cur.execute("select menu.name, menu.price, order_items.quantity from menu join order_items on "
+                        "menu.id = order_items.menu_id where order_items.order_id = %s ", order_id)
+            if cur.rowcount < 1:
+                return {"error": "Invalid Order Request"}
+            bill = cur.fetchall()
+            return {"bill": bill, "restaurant_details": overall_details}
+    except KeyError:
+        return {"error": "Invalid Parameters found. "}
