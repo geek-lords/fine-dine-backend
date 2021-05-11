@@ -47,7 +47,7 @@ create table orders
     payment_status      int         not null,
     price_excluding_tax numeric(7, 2),
     tax                 numeric(7, 2),
-    time_and_data timestamp not null default now()
+    time_and_date timestamp not null default now()
 );
 
 
