@@ -208,6 +208,8 @@ def _decoded_user_id(_request):
         return None
     except KeyError:
         return None
+    except jwt.exceptions.DecodeError:
+        return None
 
 
 @user.route('/menu')
@@ -275,6 +277,23 @@ def get_menu():
 
 @user.route("/order", methods=["POST"])
 def create_order():
+    """
+    Create an order.
+
+    url - /api/v1/order?restaurant_id=<restaurant id>&table=<table>
+    Headers - X-Auth-Token: <jwt>
+
+    Sample error -
+    {
+        "error": "reason for error"
+    }
+
+    Sample output -
+    {
+        "order_id": "38trfghere yfrguoi rgrgg",
+        "tax_percent": 5.5
+    }
+    """
     try:
         user_id = _decoded_user_id(request)
         if not user_id:
@@ -402,35 +421,28 @@ def update_payment_status():
     """
     Updates transaction status for the given transaction id
 
-    If the payment status is set to successful in the database, returns -
-    {
-        "success": true
-    }
+    url - /api/v1/update_payment_status?txn_id=<txn_id>
+    Headers - X-Auth-Token: <jwt>
 
-    If the payment status is set to failed or invalid in database, returns -
-    {
-        "success": false
-    }
+    Sample output -
 
-    If there is a successful transaction against the order for which
-    this transaction was initiated, then it returns -
-    {
-        "error": "This order has already been paid for"
-    }
-
-    If none of the above conditions are true, fetches the updated
-    payment status from paytm and returns -
     {
         "payment_status": <payment_status>
     }
 
-    Payment status -
+    Where payment status is one of -
 
     Value | Meaning
     0     | SUCCESSFUL
     1     | PENDING
     2     | INVALID
     3     | FAILED
+
+    If there is a successful transaction against the order for which
+    this transaction was initiated, then it returns -
+    {
+        "error": "This order has already been paid for"
+    }
 
     :return:
     """
@@ -499,56 +511,228 @@ def update_payment_status():
 
 
 class Order:
-    def __init__(self, order_id, menu_id, quantity, price=0, restaurant_id=None):
+    def __init__(self, order_id, menu_id, quantity, price=0):
         self.order_id = order_id
         self.menu_id = menu_id
         self.quantity = int(quantity)
         self.price = float(price)
-        self.restaurant_id = restaurant_id
+
+    def is_valid(self):
+        return self.menu_id is not None \
+               and self.quantity is not None \
+               and (0 < self.quantity < 16)
 
 
 @user.route("/order_items", methods=['POST'])
 def order_items():
+    """
+    Add items to order.
+
+    url - /api/v1/order_items?order_id=jhcvxjdsvydsgvfshgho
+    Headers - X-Auth-Token: <jwt>
+
+    sample input -
+    {
+        "order_list": [
+            {
+                "menu_id": 1,
+                "quantity": 2
+            },
+            {
+                "menu_id": 2,
+                "quantity": 3
+            }
+        ]
+    }
+
+    sample output -
+    {
+        "success": true
+    }
+
+    sample error -
+    {
+        "error": "reason for error"
+    }
+    """
     try:
         if not request.json:
             return {"error": "Invalid Request/ No Json Data Found."}, ValidationError
-        order_id = request.json["order_id"]
-        order_list = request.json["order_list"]
-        all_orders = []
-        restaurant_id_set = set()
-        for orders in order_list:
-            current_order = Order(order_id, orders["menu_id"], orders["quantity"])
-            if current_order.order_id is None or current_order.menu_id is None \
-                    or current_order.quantity is None or 0 >= current_order.quantity > 16:
-                return {"error": "Invalid Order Parameters."}, ValidationError
-            # Validation of Request
-            with connection() as conn, conn.cursor() as cur:
-                cur.execute("SELECT restaurant_id from menu where id = %s ", current_order.menu_id)
-                restaurant_id = cur.fetchone()
-                if restaurant_id is None:
-                    return {"error": "Restaurant doesn't exists."}, ValidationError
-                current_order.restaurant_id = restaurant_id[0]
-                restaurant_id_set.add(current_order.restaurant_id)
-                if len(restaurant_id_set) > 1:
-                    return {"error": "Food can't be ordered from different locations."}, ValidationError
-                cur.execute("SELECT price from menu where id = %s ", current_order.menu_id)
-                price = cur.fetchone()
-                if price is None:
-                    return {"error": "Invalid Order Parameters."}, ValidationError
-                current_order.price = float(price[0]) * int(current_order.quantity)
-                all_orders.append(current_order)
-        for each in all_orders:
-            with connection() as conn, conn.cursor() as cur:
-                cur.execute("insert into order_items(order_id, menu_id, quantity, price) values "
-                            "(%s,%s,%s,%s) on duplicate key "
-                            "update quantity = quantity + %s, price = price + %s ",
-                            (each.order_id, each.menu_id, each.quantity, each.price, int(each.quantity),
-                             each.price)
-                            )
-                conn.commit()
-        return {"message": "Order Received."}, 200
-    except TypeError:
-        return {"error": "<write Error here.>"}
-    except KeyError:
-        return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
 
+        order_id = request.args.get("order_id")
+
+        if not order_id:
+            return {'error': 'Invalid request'}, ValidationError
+
+        user_id = _decoded_user_id(request)
+        if not user_id:
+            return {'error': 'Authentication error'}, ValidationError
+
+        all_orders = list(map(lambda json: Order(order_id, json["menu_id"], json["quantity"]),
+                              request.json['order_list']))
+
+        if len(all_orders) == 0:
+            return {'error': 'order items cannot be empty'}, ValidationError
+
+        for order in all_orders:
+            if not order.is_valid():
+                return {"error": "Invalid input"}, ValidationError
+
+        menu_ids = tuple(map(lambda order: order.menu_id, all_orders))
+
+        if len(set(menu_ids)) != len(menu_ids):
+            return {'error': 'Menu id cannot be repeated'}, ValidationError
+
+        with connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                'select user_id from orders where id = %s',
+                (order_id,)
+            )
+
+            if cur.rowcount == 0:
+                return {'error': 'No such order found'}, ValidationError
+
+            if cur.fetchone()[0] != user_id:
+                return {'error': 'Authorization error'}, ValidationError
+
+            cur.execute('select id, price, restaurant_id from menu where id in %s', (menu_ids,))
+            rows = cur.fetchall()
+            restaurant_ids = list(map(lambda row: row[2], rows))
+
+            if len(restaurant_ids) == 0:
+                return {'error': 'Menu id does not exist'}, ValidationError
+
+            if len(set(restaurant_ids)) != 1:
+                return {'error': 'Cannot order from multiple restaurants'}, ValidationError
+
+            if len(restaurant_ids) != len(menu_ids):
+                return {'error': 'One or more menu ids does not exist'}, ValidationError
+
+            prices = {}
+            for id, price, _ in rows:
+                prices[id] = float(price)
+
+            for order in all_orders:
+                order.price = prices[id] * order.quantity
+
+            # execute many raises type error for some reason
+            for order in all_orders:
+                cur.execute(
+                    "insert into order_items(order_id, menu_id, quantity, price) values "
+                    "(%s,%s,%s,%s) on duplicate key "
+                    "update quantity = quantity + %s, price = price + %s ",
+                    (order.order_id, order.menu_id, order.quantity,
+                     order.price, order.quantity, order.price)
+                )
+
+            conn.commit()
+
+        return {"success": True}
+    except (KeyError, TypeError):
+        return {'error': 'Invalid input'}, ValidationError
+
+
+@user.route("/order_history", methods=['POST'])
+def get_order_history():
+    """
+        This route shows orders made by a particular user.
+
+        Sample Input: send a JSON, POST request. add a X-Auth-Token in Header of request and send JWT Token
+                      as value of X-Auth-Token.
+        Sample Output:
+        {
+            "history":
+                [
+                    {
+                      "id": "3a9d8156-6c65-4a61-9f19-df612251223b",
+                      "name": "Joshi Bhojangrih",
+                      "photo_url": "goal.jpeg",
+                      "price_excluding_tax": "650.00",
+                      "tax_percent": "18.00",
+                      "time_and_date": "2021-05-08 03:44"
+                    },
+                    {
+                      "id": "3a9d8156-6c65-4a61-9f19-df612254223b",
+                      "name": "Joshi Bhojangrih",
+                      "photo_url": "goal.jpeg",
+                      "price_excluding_tax": "350.00",
+                      "tax_percent": "18.00",
+                      "time_and_date": "2021-05-08 03:44"
+                    }
+                ]
+        }
+        Here, id shows order_id.
+
+        else, An Error is returned.
+    """
+    try:
+        user_id = _decoded_user_id(request)
+        if user_id is None:
+            return {"error": "Invalid Username."}
+        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
+            cur.execute(
+                "Select orders.id, restaurant.name, orders.price_excluding_tax,orders.time_and_date,"
+                "restaurant.tax_percent,restaurant.photo_url from "
+                "orders join restaurant on orders.restaurant_id = restaurant.id where orders.user_id=%s", user_id
+            )
+            if cur.rowcount < 1:
+                return {"error": "No Previous Orders Found."}
+            order_history = cur.fetchall()
+            for order in order_history:
+                order['price_excluding_tax'] = str(order['price_excluding_tax'])
+                order['tax_percent'] = str(order['tax_percent'])
+                order['time_and_date'] = str(order['time_and_date'])[:-3]
+            return {"history": order_history}
+
+    except KeyError:
+        return {"error": "User Token expected."}
+
+
+@user.route("/order_history/<order_id>", methods=['POST'])
+def individual_order_history(order_id):
+    """
+        This route gives extra Information about a particular order by a user. i.e. Bill
+
+        Sample Input: A JSON, POST request. With Header X-Auth-Token with value as JWT Token should be
+                      sent at URL/order_history/<required order id>
+
+        Sample Output:
+        {
+            "bill":
+                [
+                    {
+                      "name": "Wada Sambar",
+                      "price": "90.00",
+                      "quantity": "10"
+                    },
+                    {
+                      "name": "Tea",
+                      "price": "15.00",
+                      "quantity": "3"
+                    }
+                ]
+        }
+    """
+    try:
+        user_id = _decoded_user_id(request)
+        if user_id is None:
+            return {"error": "User ID can't be None."}
+        #     Authenticating the Order and User Relation
+        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
+            cur.execute("Select user_id from orders where id = %s", order_id)
+            order_user_id = cur.fetchone()['user_id']
+            if str(order_user_id) != user_id:
+                return {"error": "Invalid Requesting User."}
+            # Get Overall Information
+            cur.execute("select menu.name, menu.price, order_items.quantity from menu join order_items on "
+                        "menu.id = order_items.menu_id where order_items.order_id = %s ", order_id)
+            if cur.rowcount < 1:
+                return {"error": "Invalid Order Request"}
+            bill = cur.fetchall()
+            for bills in bill:
+                bills['price'] = str(bills['price'])
+                bills['quantity'] = str(bills['quantity'])
+            # return {"bill": bill}
+            return {"bill": bill}
+    except KeyError:
+        return {"error": "Invalid Parameters found. "}

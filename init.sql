@@ -46,7 +46,8 @@ create table orders
     table_name          text        not null references tables (name),
     payment_status      int         not null,
     price_excluding_tax numeric(7, 2),
-    tax                 numeric(7, 2)
+    tax                 numeric(7, 2),
+    time_and_date timestamp not null default now()
 );
 
 
