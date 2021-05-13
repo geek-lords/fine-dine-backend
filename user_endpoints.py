@@ -201,6 +201,8 @@ def _decoded_user_id(_request):
         return None
     except KeyError:
         return None
+    except jwt.exceptions.DecodeError:
+        return None
 
 
 @user.route('/menu')
@@ -611,9 +613,7 @@ def order_items():
 def get_order_history():
     """
         This route shows order history for a user.
-        Sample Input :  {
-                            "jwt_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
-                        }
+        Sample Input :  send JWT as token - X-Auth-Token
         Sample Output(List of all orders) :
                     {
                       "history":
@@ -637,7 +637,6 @@ def get_order_history():
         user_id = _decoded_user_id(request)
         if user_id is None:
             return {"error": "Username can't be None."}
-        print(user_id)
         with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute(
                 "Select id,restaurant_id,price_excluding_tax, time_and_date from orders where user_id = %s "
@@ -646,7 +645,7 @@ def get_order_history():
             if cur.rowcount < 1:
                 return {"error": "No Previous Orders Found."}
             order_history = cur.fetchall()
-            print(order_history)
+
             for individual in order_history:
                 cur.execute("select name from restaurant where id = %s", individual.get('restaurant_id'))
                 if cur.rowcount < 1:
