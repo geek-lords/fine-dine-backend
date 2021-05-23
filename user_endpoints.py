@@ -248,6 +248,13 @@ def get_menu():
         return {'error': 'Invalid input. One or more parameters absent'}
 
     with connection() as conn, conn.cursor() as cur:
+        cur.execute('select name from restaurant where id = %s', (restaurant_id,))
+
+        if cur.rowcount == 0:
+            return {'error', 'Restaurant does not exist'}, ValidationError
+
+        restaurant = cur.fetchone()[0]
+
         cur.execute(
             'select id, name, description, photo_url, price '
             'from menu '
@@ -272,7 +279,7 @@ def get_menu():
                 }
             )
 
-        return {'menu': menu}
+        return {'menu': menu, 'restaurant': restaurant}
 
 
 @user.route("/order", methods=["POST"])
@@ -671,9 +678,13 @@ def get_order_history():
             return {"error": "Invalid Username."}
         with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute(
-                "Select orders.id, restaurant.name, orders.price_excluding_tax,orders.time_and_date,"
-                "restaurant.tax_percent,restaurant.photo_url from "
-                "orders join restaurant on orders.restaurant_id = restaurant.id where orders.user_id=%s", user_id
+                "Select orders.id, restaurant.name, orders.price_excluding_tax, orders.time_and_date,"
+                "restaurant.tax_percent,restaurant.photo_url "
+                "from orders "
+                "join restaurant on orders.restaurant_id = restaurant.id "
+                "where orders.user_id= %s "
+                "order by orders.time_and_date",
+                user_id
             )
             if cur.rowcount < 1:
                 return {"error": "No Previous Orders Found."}
