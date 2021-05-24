@@ -7,6 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, request
 from jwt import InvalidSignatureError
+from pytz import timezone
 
 import paytm
 from config import jwt_secret, merchant_id
@@ -683,7 +684,7 @@ def get_order_history():
                 "from orders "
                 "join restaurant on orders.restaurant_id = restaurant.id "
                 "where orders.user_id= %s "
-                "order by orders.time_and_date",
+                "order by orders.time_and_date desc",
                 user_id
             )
             if cur.rowcount < 1:
@@ -692,7 +693,8 @@ def get_order_history():
             for order in order_history:
                 order['price_excluding_tax'] = str(order['price_excluding_tax'])
                 order['tax_percent'] = str(order['tax_percent'])
-                order['time_and_date'] = str(order['time_and_date'])[:-3]
+                time_and_date_in_IST = order['time_and_date'].astimezone(timezone('Asia/Kolkata'))
+                order['time_and_date'] = time_and_date_in_IST.strftime("%I:%M %p %d/%m/%Y")
             return {"history": order_history}
 
     except KeyError:
