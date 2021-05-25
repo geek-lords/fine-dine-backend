@@ -399,8 +399,8 @@ def checkout():
         total_price = price + tax
 
         cur.execute(
-            'update orders set price_excluding_tax = %s, tax = %s where id = %s',
-            (price, tax, order_id)
+            'update orders set tax = %s where id = %s',
+            (tax, order_id)
         )
 
         txn_id = str(uuid4())
@@ -575,7 +575,7 @@ def order_items():
         if not user_id:
             return {'error': 'Authentication error'}, ValidationError
 
-        all_orders = list(map(lambda json: Order(order_id, json["menu_id"], json["quantity"]),
+        all_orders = list(map(lambda json: Order(order_id, int(json["menu_id"]), json["quantity"]),
                               request.json['order_list']))
 
         if len(all_orders) == 0:
@@ -620,7 +620,7 @@ def order_items():
                 prices[id] = float(price)
 
             for order in all_orders:
-                order.price = prices[id] * order.quantity
+                order.price = prices[order.menu_id] * order.quantity
 
             # execute many raises type error for some reason
             for order in all_orders:
@@ -631,12 +631,14 @@ def order_items():
                     (order.order_id, order.menu_id, order.quantity,
                      order.price, order.quantity, order.price)
                 )
-
+            price_excluding_tax = sum(map(lambda o: o.price, all_orders))
+            cur.execute("update orders set price_excluding_tax = price_excluding_tax + %s where id = %s",
+                        (price_excluding_tax, order_id))
             conn.commit()
 
         return {"success": True}
     except (KeyError, TypeError):
-        return {'error': 'Invalid input'}, ValidationError
+        return {'error': "Invalid Input."}, ValidationError
 
 
 @user.route("/order_history", methods=['POST'])

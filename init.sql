@@ -15,7 +15,7 @@ create table restaurant
     description text          not null,
     photo_url   text          not null,
     tax_percent numeric(7, 2) not null,
-    admin_id    varchar(36)   not null
+    admin_id    varchar(36)   not null unique
 );
 -- will add more things like co ordinates when we get to browse
 -- lets focus on core features first
@@ -74,11 +74,11 @@ create table transactions
     payment_status int           not null
 );
 
-create table admins
-(
-    id              varchar(36) primary key,
-    name            text(50) not null,
-    hashed_password text     not null,
-    email_id        varchar(50) unique,
-    phone           varchar(13) unique
+create table admin(
+    id varchar(36) primary key,
+    f_name varchar(60) not null,
+    l_name varchar(60) not null,
+    email_address varchar(100) unique not null,
+    contact_number varchar(15) unique not null,
+    password varchar(100) not null
 );
