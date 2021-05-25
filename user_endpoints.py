@@ -239,6 +239,13 @@ def get_menu():
         return {'error': 'Invalid input. One or more parameters absent'}
 
     with connection() as conn, conn.cursor() as cur:
+        cur.execute('select name from restaurant where id = %s', (restaurant_id,))
+
+        if cur.rowcount == 0:
+            return {'error', 'Restaurant does not exist'}, ValidationError
+
+        restaurant = cur.fetchone()[0]
+
         cur.execute(
             'select id, name, description, photo_url, price '
             'from menu '
@@ -263,7 +270,7 @@ def get_menu():
                 }
             )
 
-        return {'menu': menu}
+        return {'menu': menu, 'restaurant': restaurant}
 
 
 @user.route("/order", methods=["POST"])
@@ -380,8 +387,8 @@ def checkout():
         total_price = price + tax
 
         cur.execute(
-            'update orders set price_excluding_tax = %s, tax = %s where id = %s',
-            (price, tax, order_id)
+            'update orders set tax = %s where id = %s',
+            (tax, order_id)
         )
 
         txn_id = str(uuid4())
@@ -545,7 +552,7 @@ def order_items():
         if not user_id:
             return {'error': 'Authentication error'}, ValidationError
 
-        all_orders = list(map(lambda json: Order(order_id, json["menu_id"], json["quantity"]),
+        all_orders = list(map(lambda json: Order(order_id, int(json["menu_id"]), json["quantity"]),
                               request.json['order_list']))
 
         if len(all_orders) == 0:
@@ -590,7 +597,7 @@ def order_items():
                 prices[id] = float(price)
 
             for order in all_orders:
-                order.price = prices[id] * order.quantity
+                order.price = prices[order.menu_id] * order.quantity
 
             # execute many raises type error for some reason
             for order in all_orders:
@@ -601,56 +608,96 @@ def order_items():
                     (order.order_id, order.menu_id, order.quantity,
                      order.price, order.quantity, order.price)
                 )
-
+            price_excluding_tax = sum(map(lambda o: o.price, all_orders))
+            cur.execute("update orders set price_excluding_tax = price_excluding_tax + %s where id = %s",
+                        (price_excluding_tax, order_id))
             conn.commit()
 
         return {"success": True}
     except (KeyError, TypeError):
+<<<<<<< HEAD
         return {'error': 'Invalid input'}, ValidationError
+=======
+        return {'error': "Invalid Input."}, ValidationError
+>>>>>>> main
 
 
 @user.route("/order_history", methods=['POST'])
 def get_order_history():
     """
+<<<<<<< HEAD
         This route shows order history for a user.
         Sample Input :  send JWT as token - X-Auth-Token
         Sample Output(List of all orders) :
+=======
+        This route shows orders made by a particular user.
+
+        Sample Input: send a JSON, POST request. add a X-Auth-Token in Header of request and send JWT Token
+                      as value of X-Auth-Token.
+        Sample Output:
+        {
+            "history":
+                [
                     {
-                      "history":
-                        [
-                            {
-                              "id": "3a9d8156-6c65-4a61-9f19-df612251223b",
-                              "price_excluding_tax": 650.00,
-                              "restaurant_id": "Joshi Bhojangrih",
-                              "time_and_date": "Sat, 08 May 2021 03:44:09 GMT"
-                            },
-                            {
-                              "id": "3a9d8156-6c65-4a61-9f19-df612254223b",
-                              "price_excluding_tax": 350.00,
-                              "restaurant_id": "Joshi Bhojangrih",
-                              "time_and_date": "Sat, 08 May 2021 03:44:48 GMT"
-                            }
-                        ]
+                      "id": "3a9d8156-6c65-4a61-9f19-df612251223b",
+                      "name": "Joshi Bhojangrih",
+                      "photo_url": "goal.jpeg",
+                      "price_excluding_tax": "650.00",
+                      "tax_percent": "18.00",
+                      "time_and_date": "2021-05-08 03:44"
+                    },
+>>>>>>> main
+                    {
+                      "id": "3a9d8156-6c65-4a61-9f19-df612254223b",
+                      "name": "Joshi Bhojangrih",
+                      "photo_url": "goal.jpeg",
+                      "price_excluding_tax": "350.00",
+                      "tax_percent": "18.00",
+                      "time_and_date": "2021-05-08 03:44"
                     }
+<<<<<<< HEAD
+=======
+                ]
+        }
+        Here, id shows order_id.
+
+        else, An Error is returned.
+>>>>>>> main
     """
     try:
         user_id = _decoded_user_id(request)
         if user_id is None:
+<<<<<<< HEAD
             return {"error": "Username can't be None."}
+=======
+            return {"error": "Invalid Username."}
+>>>>>>> main
         with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute(
-                "Select id,restaurant_id,price_excluding_tax, time_and_date from orders where user_id = %s "
-                "order by time_and_date asc;"
-                , user_id)
+                "Select orders.id, restaurant.name, orders.price_excluding_tax, orders.time_and_date,"
+                "restaurant.tax_percent,restaurant.photo_url "
+                "from orders "
+                "join restaurant on orders.restaurant_id = restaurant.id "
+                "where orders.user_id= %s "
+                "order by orders.time_and_date",
+                user_id
+            )
             if cur.rowcount < 1:
                 return {"error": "No Previous Orders Found."}
             order_history = cur.fetchall()
+<<<<<<< HEAD
 
             for individual in order_history:
                 cur.execute("select name from restaurant where id = %s", individual.get('restaurant_id'))
                 if cur.rowcount < 1:
                     return {"error": "Previous orders misplaced."}
                 individual['restaurant_id'] = cur.fetchone().get('name')
+=======
+            for order in order_history:
+                order['price_excluding_tax'] = str(order['price_excluding_tax'])
+                order['tax_percent'] = str(order['tax_percent'])
+                order['time_and_date'] = str(order['time_and_date'])[:-3]
+>>>>>>> main
             return {"history": order_history}
 
     except KeyError:
@@ -660,33 +707,27 @@ def get_order_history():
 @user.route("/order_history/<order_id>", methods=['POST'])
 def individual_order_history(order_id):
     """
-        The request for this should be sent on URL/order_history/<order_id>
-        Sample Input :
-                    {
-                        "jwt_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
-                    }
+        This route gives extra Information about a particular order by a user. i.e. Bill
+
+        Sample Input: A JSON, POST request. With Header X-Auth-Token with value as JWT Token should be
+                      sent at URL/order_history/<required order id>
+
         Sample Output:
+        {
+            "bill":
+                [
                     {
-                      "bill": [
-                                {
-                                  "name": "Wada Sambar",
-                                  "price": 90.00,
-                                  "quantity": 10
-                                },
-                                {
-                                  "name": "Tea",
-                                  "price": 15.00,
-                                  "quantity": 3
-                                }
-                              ],
-                      "restaurant_details": {
-                            "name": "Joshi Bhojangrih",
-                            "photo_url": "goal.jpeg",
-                            "price_excluding_tax": 650.00,
-                            "tax_percent": 18.00,
-                            "time_and_date": "Sat, 08 May 2021 03:44:09 GMT"
-                                            }
+                      "name": "Wada Sambar",
+                      "price": "90.00",
+                      "quantity": "10"
+                    },
+                    {
+                      "name": "Tea",
+                      "price": "15.00",
+                      "quantity": "3"
                     }
+                ]
+        }
     """
     try:
         user_id = _decoded_user_id(request)
@@ -699,18 +740,15 @@ def individual_order_history(order_id):
             if str(order_user_id) != user_id:
                 return {"error": "Invalid Requesting User."}
             # Get Overall Information
-            cur.execute(
-                "Select restaurant.name , restaurant.photo_url, restaurant.tax_percent ,orders.price_excluding_tax, orders.time_and_date from restaurant "
-                "join orders on restaurant.id = orders.restaurant_id where orders.id = %s ",
-                order_id)
-            if cur.rowcount < 1:
-                return {"error": "No Orders Found."}
-            overall_details = cur.fetchone()
             cur.execute("select menu.name, menu.price, order_items.quantity from menu join order_items on "
                         "menu.id = order_items.menu_id where order_items.order_id = %s ", order_id)
             if cur.rowcount < 1:
                 return {"error": "Invalid Order Request"}
             bill = cur.fetchall()
-            return {"bill": bill, "restaurant_details": overall_details}
+            for bills in bill:
+                bills['price'] = str(bills['price'])
+                bills['quantity'] = str(bills['quantity'])
+            # return {"bill": bill}
+            return {"bill": bill}
     except KeyError:
         return {"error": "Invalid Parameters found. "}

@@ -10,11 +10,16 @@ from email_validator import EmailNotValidError, validate_email
 from config import jwt_secret
 from db_utils import connection
 import pymysql
+import re
 
 admin = Blueprint('admin', __name__)
 
 # HTTP Errors
 ValidationError = 422
+
+MinPasswordLength = 5
+
+MaxPasswordLength = 70
 
 
 @admin.route('/version')
@@ -90,62 +95,49 @@ def generate_code():
 
 @admin.route("/create_admin", methods=['POST'])
 def create_admin():
-    """
-    How to create a new admin account? 
-        Name can be anything except empty, Email should be a actual Email and Unique and Phone Number should be a actual 
-        Phone Number and Unique, Password can be anything with length in between 8 to 70.
-            Sample JSON Input:
-                {
-                    "name":"Sarvesh Joshi",
-                    "email_id":"fake@gmail.com",
-                    "password":"anyPassword",
-                    "phone":"9876543210"
-                }
-            Sample JSON Output:
-                {
-                     "jwt_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
-                }
-            i.e. returns a JWT Token as a success, else an error.
-        
-    """
     try:
         if not request.json:
-            return {"error": "No JSON Data found."}, ValidationError
-        name = str(request.json['name'])
-        email = str(request.json['email_id'])
-        password = str(request.json['password'])
-        phone = str(request.json['phone'])
-        if name is None or len(name) == 0:
-            return {"error": "Invalid  Name"}, ValidationError
+            return {"error": "Invalid Request for Account Creation."}, ValidationError
+
+        f_name = str(request.json['f_name'])
+        l_name = str(request.json['l_name'])
+        email_id = str(request.json['email_id'])
+        contact_number = str(request.json['contact']).strip()
+        password = str(request.json["password"]).strip()
+
+        if 1 > len(f_name) or len(f_name) > 50 or 1 > len(l_name) or len(l_name) > 50:
+            return {"error": "Length of Name fields should be between 1 and 50."}, ValidationError
 
         try:
-            email = validate_email(email).email
+            # validating email and assigning the valid email back to email
+            email_id = validate_email(email_id).email
+            with connection() as conn, conn.cursor() as cur:
+                cur.execute("select email_address from admin where email_address = %s", email_id)
+                if cur.rowcount() == 1:
+                    return {"error": "Email Address already exists."}, ValidationError
         except EmailNotValidError:
-            return {'error': "Invalid Email Address."}, ValidationError
+            return {'error': 'Email Address is not valid'}
 
-        if len(password) < 6 or len(password) > 70:
-            return {"error": "Length of Password should be between 6 to 70."}, ValidationError
-        hashed_password = hash_password(password)
+        pattern = re.compile("[7-9][0-9]{9}")
 
-        if not phone.isdigit() or len(phone) != 10:
-            return {"error": "Invalid Phone Number."}, ValidationError
-        user_id = str(uuid4())
+        if not pattern.match(contact_number):
+            return {"error": "Mobile Number is not valid."}
         with connection() as conn, conn.cursor() as cur:
-            cur.execute(
-                "Insert into admins(id, name, hashed_password, email_id, phone) values(%s,%s,%s,%s,%s)",
-                (user_id, name, hashed_password, email, phone)
-            )
-            conn.commit()
-            jwt_token = jwt.encode({'user_id': user_id, 'is_admin': True}, jwt_secret, algorithm='HS256')
-            # Added is_admin field here because we're checking it for Authentication in other places.
-        return {
-            "jwt_token": jwt_token
-        }
+            cur.execute("Select contact_number from admin where contact_number = %s", contact_number)
+            if cur.rowcount() == 1:
+                return {"error": "Mobile Number already exists."}, ValidationError
+
+        password = str(request.json['password'])
+
+        if len(password) < MinPasswordLength or len(password) > MaxPasswordLength:
+            return {
+                       'error': f'password should be between {MinPasswordLength} ' f'and {MaxPasswordLength} characters'}, ValidationError
+
 
     except KeyError:
-        return {"error": "One or more parameters absent."}
+        return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
     except pymysql.err.IntegrityError:
-        return {"error": "Contact Information already exists."}
+        return {'error': 'User already exists'}
 
 
 @admin.route("/authenticate_admin", methods=['POST'])
@@ -163,4 +155,4 @@ def authenticate_user():
 
 
 if __name__ == '__main__':
-    image = qrcode.make('some data')
+    pass
