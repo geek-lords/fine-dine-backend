@@ -79,12 +79,12 @@ def create_user():
         if not request.json:
             return {'error': 'No json data found'}, ValidationError
 
-        name = str(request.json['name'])
+        name = str(request.json['name']).strip()
 
         if len(name) == 0:
             return {'error': 'name invalid or empty'}, ValidationError
 
-        password = str(request.json['password'])
+        password = str(request.json['password']).strip()
 
         if len(password) < MinPasswordLength or len(password) > MaxPasswordLength:
             return (
@@ -95,7 +95,7 @@ def create_user():
                 ValidationError
             )
 
-        email = str(request.json['email'])
+        email = str(request.json['email']).strip()
         try:
             # validating email and assigning the valid email back to email
             email = validate_email(email).email
@@ -751,3 +751,81 @@ def individual_order_history(order_id):
             return {"bill": bill}
     except KeyError:
         return {"error": "Invalid Parameters found. "}
+
+
+@user.route('/user', methods=['GET'])
+def get_user():
+    """
+    Headers - X-Auth-Token: <jwt>
+
+    No other input required
+
+    Sample output -
+    {
+        "email": "def@abc.com",
+        "name": "def"
+    }
+    """
+    user_id = _decoded_user_id(request)
+    if not user_id:
+        return {'error': 'Authentication error'}, ValidationError
+
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            'select name, email from users where id = %s',
+            (user_id,)
+        )
+
+        row = cur.fetchone()
+        return {
+            'name': row[0],
+            'email': row[1],
+        }
+
+
+@user.route('/user', methods=['PUT'])
+def update_user():
+    """
+    Headers - X-Auth-Token: <jwt>
+
+    Sample input -
+    {
+        "name": "<new name>"
+        "email": "new email"
+    }
+
+    Sample error -
+    {
+        "error": "<reason for error>"
+    }
+
+    Sample output -
+    {
+        "email": "def@abc.com",
+        "name": "def"
+    }
+    """
+    user_id = _decoded_user_id(request)
+    if not user_id:
+        return {'error': 'Authentication error'}, ValidationError
+
+    if not request.json:
+        return {'error': 'Invalid input'}, ValidationError
+
+    name = str(request.json.get('name', '')).strip()
+    email = str(request.json.get('email', '')).strip()
+
+    if not email or not name:
+        return {'error': 'Invalid input'}, ValidationError
+
+    try:
+        # validating email and assigning the valid email back to email
+        email = validate_email(email).email
+    except EmailNotValidError:
+        return {'error': 'email is not valid'}, ValidationError
+
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute('update users set name = %s, email = %s where id = %s', (name, email, user_id))
+        conn.commit()
+
+    return {}
