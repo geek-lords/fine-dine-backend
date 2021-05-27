@@ -615,11 +615,8 @@ def order_items():
 
         return {"success": True}
     except (KeyError, TypeError):
-<<<<<<< HEAD
         return {'error': 'Invalid input'}, ValidationError
-=======
-        return {'error': "Invalid Input."}, ValidationError
->>>>>>> main
+
 
 
 @user.route("/order_history", methods=['POST'])
@@ -646,7 +643,6 @@ def get_order_history():
                       "tax_percent": "18.00",
                       "time_and_date": "2021-05-08 03:44"
                     },
->>>>>>> main
                     {
                       "id": "3a9d8156-6c65-4a61-9f19-df612254223b",
                       "name": "Joshi Bhojangrih",
@@ -662,16 +658,12 @@ def get_order_history():
         Here, id shows order_id.
 
         else, An Error is returned.
->>>>>>> main
     """
     try:
         user_id = _decoded_user_id(request)
         if user_id is None:
-<<<<<<< HEAD
+
             return {"error": "Username can't be None."}
-=======
-            return {"error": "Invalid Username."}
->>>>>>> main
         with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute(
                 "Select orders.id, restaurant.name, orders.price_excluding_tax, orders.time_and_date,"
@@ -685,19 +677,16 @@ def get_order_history():
             if cur.rowcount < 1:
                 return {"error": "No Previous Orders Found."}
             order_history = cur.fetchall()
-<<<<<<< HEAD
 
             for individual in order_history:
                 cur.execute("select name from restaurant where id = %s", individual.get('restaurant_id'))
                 if cur.rowcount < 1:
                     return {"error": "Previous orders misplaced."}
                 individual['restaurant_id'] = cur.fetchone().get('name')
-=======
             for order in order_history:
                 order['price_excluding_tax'] = str(order['price_excluding_tax'])
                 order['tax_percent'] = str(order['tax_percent'])
                 order['time_and_date'] = str(order['time_and_date'])[:-3]
->>>>>>> main
             return {"history": order_history}
 
     except KeyError:
