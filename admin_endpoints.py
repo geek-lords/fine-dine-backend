@@ -159,6 +159,8 @@ def create_table():
     """
     creates a new table:
 
+    Headers - X-Auth-Token: <jwt>
+
     Sample input -
     {
         "restaurant_id": "id of restaurant",
@@ -218,6 +220,7 @@ def delete_table():
     Deletes a table.
 
     Url - /api/v1/admin/table?id=<id of table to delete>
+    Headers - X-Auth-Token: <jwt>
 
     Sample output -
     {
@@ -280,6 +283,7 @@ def get_restaurant_ids(admin_id, cur):
 def update_table():
     """
     url - /api/v1/admin/table?id=<id of table>
+    Headers - X-Auth-Token: <jwt>
 
     Sample input -
     {
@@ -336,6 +340,7 @@ def update_table():
 def get_all_tables():
     """
     url - /api/v1/admin/all_tables?restaurant_id=<id of restaurant>
+    Headers - X-Auth-Token: <jwt>
 
     sample error -
     {
