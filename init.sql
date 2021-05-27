@@ -15,7 +15,7 @@ create table restaurant
     description text          not null,
     photo_url   text          not null,
     tax_percent numeric(7, 2) not null,
-    admin_id    varchar(36)   not null unique
+    admin_id    varchar(36)   not null references admin (id)
 );
 -- will add more things like co ordinates when we get to browse
 -- lets focus on core features first
@@ -31,23 +31,16 @@ create table menu
 );
 
 
-create table tables
-(
-    name          text        not null,
-    restaurant_id varchar(36) not null references restaurant (id)
-);
-
-
 create table orders
 (
     id                  varchar(36) primary key,
     user_id             varchar(36) not null references users (id),
     restaurant_id       varchar(36) not null references restaurant (id),
-    table_name          text        not null references tables (name),
+    table_name          text        not null references tables (id),
     payment_status      int         not null,
     price_excluding_tax numeric(7, 2),
     tax                 numeric(7, 2),
-    time_and_date timestamp not null default now()
+    time_and_date       timestamp   not null default now()
 );
 
 
@@ -62,6 +55,7 @@ create table order_items
 
 create table tables
 (
+    id            serial primary key,
     name          text        not null,
     restaurant_id varchar(36) not null references restaurant (id)
 );
@@ -74,11 +68,12 @@ create table transactions
     payment_status int           not null
 );
 
-create table admin(
-    id varchar(36) primary key,
-    f_name varchar(60) not null,
-    l_name varchar(60) not null,
-    email_address varchar(100) unique not null,
-    contact_number varchar(15) unique not null,
-    password varchar(100) not null
+create table admin
+(
+    id             varchar(36) primary key,
+    f_name         varchar(60)         not null,
+    l_name         varchar(60)         not null,
+    email_address  varchar(100) unique not null,
+    contact_number varchar(15) unique  not null,
+    password       varchar(100)        not null
 );

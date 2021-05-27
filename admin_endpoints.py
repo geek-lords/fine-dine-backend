@@ -66,7 +66,7 @@ def generate_code():
         cur.execute("Select name from restaurant where id = %s && admin_id = %s", (restaurant_id, admin_id,))
         if cur.rowcount == 0:
             return {'error': "Restaurant and Admin Pair doesn't exists."}
-        cur.execute("Select * from tables where restaurant_id = %s && name = %s", (restaurant_id, table))
+        cur.execute("Select * from tables where restaurant_id = %s && id = %s", (restaurant_id, table))
         if cur.rowcount == 0:
             return {'error': "Restaurant and Table Pair doesn't exists."}
 

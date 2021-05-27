@@ -220,6 +220,7 @@ def get_menu():
 
         Sample output -
         {
+            "restaurant": "name of restaurant"
             "menu": [
                 {
                     "id": 1,
@@ -307,8 +308,8 @@ def create_order():
         if not user_id:
             return {'error': 'Authentication failure'}, ValidationError
 
-        table_name = request.args.get('table')
-        if not table_name:
+        table = request.args.get('table')
+        if not table:
             return {'error': 'table parameter not found in request'}, ValidationError
 
         restaurant_id = request.args.get('restaurant_id')
@@ -328,8 +329,8 @@ def create_order():
 
             cur.execute(
                 'select name from tables '
-                'where restaurant_id = %s and name = %s',
-                (restaurant_id, table_name)
+                'where restaurant_id = %s and id = %s',
+                (restaurant_id, table)
             )
 
             if cur.rowcount == 0:
@@ -338,9 +339,9 @@ def create_order():
             order_id = str(uuid4())
 
             cur.execute(
-                "insert into orders(id, user_id, table_name, restaurant_id, payment_status) "
+                "insert into orders(id, user_id, table_id, restaurant_id, payment_status) "
                 "values(%s, %s, %s, %s, %s)",
-                (order_id, user_id, table_name, restaurant_id, paytm.PaymentStatus.NOT_PAID.value),
+                (order_id, user_id, table, restaurant_id, paytm.PaymentStatus.NOT_PAID.value),
             )
 
             conn.commit()
@@ -695,6 +696,9 @@ def get_order_history():
             for order in order_history:
                 order['price_excluding_tax'] = str(order['price_excluding_tax'])
                 order['tax_percent'] = str(order['tax_percent'])
+                # IST is an abbreviation. So I have used capital letters
+                # which gives a warning. The next comment disables the warning
+                # noinspection PyPep8Naming
                 time_and_date_in_IST = order['time_and_date'].astimezone(timezone('Asia/Kolkata'))
                 order['time_and_date'] = time_and_date_in_IST.strftime("%I:%M %p %d/%m/%Y")
             return {"history": order_history}
