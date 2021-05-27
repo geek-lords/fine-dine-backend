@@ -47,7 +47,7 @@ def authenticate(_requests):
             return None
 
         return admin_id
-    except (InvalidSignatureError, KeyError, ValidationError):
+    except (InvalidSignatureError, KeyError, jwt.exceptions.DecodeError):
         return None
 
 
@@ -152,6 +152,124 @@ def authenticate_user():
                             "jwt_token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
                         }
     """
+
+
+@admin.route('/create_table', methods=['POST'])
+def create_table():
+    """
+    creates a new table:
+
+    Sample input -
+    {
+        "restaurant_id": "id of restaurant",
+        "table": "name of table"
+    }
+
+    Sample output -
+    {
+        "table_id": "<id of table>"
+    }
+
+    Sample error -
+    {
+        "error": "<reason for error>"
+    }
+    """
+    admin_id = authenticate(request)
+
+    if not admin_id:
+        return {'error': 'Authentication Failure'}, ValidationError
+
+    if not request.json:
+        return {'error': 'No json found'}, ValidationError
+
+    restaurant_id = request.json.get('restaurant_id')
+    table = request.json.get('table')
+
+    if not restaurant_id or not table:
+        return {'error': 'Invalid input'}, ValidationError
+
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            'select name from restaurant '
+            'where id = %s and admin_id = %s',
+            (restaurant_id, admin_id)
+        )
+
+        if cur.rowcount == 0:
+            return {'error': 'Restaurant not found'}, ValidationError
+
+        # mysql version deployed on heroku does not support retuning clause
+        # so have to use two queries
+        cur.execute(
+            'insert into tables(name, restaurant_id) values (%s, %s)',
+            (table, restaurant_id)
+        )
+
+        cur.execute('select last_insert_id()')
+        table_id = cur.fetchone()[0]
+
+        return {'table_id': table_id}
+
+
+@admin.route('/table', methods=['DELETE'])
+def delete_table():
+    """
+    Deletes a table.
+
+    Url - /api/v1/admin/table?id=<id of table to delete>
+
+    Sample output -
+    {
+        "success": true
+    }
+
+    Sample error -
+    {
+        "error": "reason for error"
+    }
+    """
+    table_id = request.args.get('id')
+    if not table_id:
+        return {'error': 'Table id not found in request'}, ValidationError
+
+    admin_id = authenticate(request)
+
+    if not admin_id:
+        return {'error': 'Authentication failed'}, ValidationError
+
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute('select id from orders where table_id = %s', (table_id,))
+        if cur.rowcount != 0:
+            return {'error': 'Cannot delete this table. Someone has ordered from here.'}, ValidationError
+
+        # we need to check whether the user is the admin of the restaurant
+        # whose table they are trying to delete
+        cur.execute(
+            'select id from restaurant where admin_id = %s',
+            (admin_id,)
+        )
+
+        # cur.fetchall() returns a list of tuples but we want a tuple
+        # of restaurant ids.
+        #
+        # it needs to be tuple because we will need to "in" clause in
+        # sql which doesn't work with list
+        restaurant_ids = tuple(map(lambda x: x[0], cur.fetchall()))
+
+        if len(restaurant_ids) == 0:
+            return {'error': 'You do not administer any restaurant'}, ValidationError
+
+        cur.execute(
+            'delete from tables where id = %s and restaurant_id in %s',
+            (table_id, restaurant_ids)
+        )
+
+        if cur.rowcount == 0:
+            return {'error': 'The table does not exist or you do not own the restaurant'}, ValidationError
+
+        conn.commit()
+        return {'success': True}
 
 
 if __name__ == '__main__':
