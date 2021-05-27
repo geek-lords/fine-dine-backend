@@ -329,3 +329,46 @@ def update_table():
 
         conn.commit()
         return {'success': True}
+
+
+# unauthenticated route because this information is nothing secret
+@admin.route('/all_tables', methods=['GET'])
+def get_all_tables():
+    """
+    url - /api/v1/admin/all_tables?restaurant_id=<id of restaurant>
+
+    sample error -
+    {
+        "error": "reason for error"
+    }
+
+    sample output -
+    {
+        "tables": [
+            {
+                "id": 1,
+                "name": "table 1"
+            },
+            {
+                "id": 2,
+                "name": "table 2"
+            },
+            {
+                "id": 3,
+                "name": "table 3"
+            }
+        ]
+    }
+    """
+    restaurant_id = request.args.get('restaurant_id')
+
+    if not restaurant_id:
+        return {'error': 'Restaurant id not found'}, ValidationError
+
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            'select id, name from tables where restaurant_id = %s',
+            (restaurant_id,)
+        )
+
+        return {'tables': list(map(lambda x: {'id': x[0], 'name': x[1]}, cur.fetchall()))}
