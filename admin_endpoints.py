@@ -245,17 +245,7 @@ def delete_table():
 
         # we need to check whether the user is the admin of the restaurant
         # whose table they are trying to delete
-        cur.execute(
-            'select id from restaurant where admin_id = %s',
-            (admin_id,)
-        )
-
-        # cur.fetchall() returns a list of tuples but we want a tuple
-        # of restaurant ids.
-        #
-        # it needs to be tuple because we will need to "in" clause in
-        # sql which doesn't work with list
-        restaurant_ids = tuple(map(lambda x: x[0], cur.fetchall()))
+        restaurant_ids = get_restaurant_ids(admin_id, cur)
 
         if len(restaurant_ids) == 0:
             return {'error': 'You do not administer any restaurant'}, ValidationError
@@ -272,5 +262,70 @@ def delete_table():
         return {'success': True}
 
 
-if __name__ == '__main__':
-    pass
+def get_restaurant_ids(admin_id, cur):
+    cur.execute(
+        'select id from restaurant where admin_id = %s',
+        (admin_id,)
+    )
+    # cur.fetchall() returns a list of tuples but we want a tuple
+    # of restaurant ids.
+    #
+    # it needs to be tuple because we will need to "in" clause in
+    # sql which doesn't work with list
+    restaurant_ids = tuple(map(lambda x: x[0], cur.fetchall()))
+    return restaurant_ids
+
+
+@admin.route('/rename_table', methods=['PUT'])
+def update_table():
+    """
+    url - /api/v1/admin/table?id=<id of table>
+
+    Sample input -
+    {
+        "name": "new name of table"
+    }
+
+    Sample output -
+    {
+        "success": true
+    }
+
+    Sample error -
+    {
+        "error": "reason for error"
+    }
+    """
+    table_id = request.args.get('id')
+    if not table_id:
+        return {'error': 'Table id not found'}, ValidationError
+
+    if not request.json:
+        return {'error': 'No Json data found'}, ValidationError
+
+    new_table_name = request.json.get('name')
+    if not new_table_name:
+        return {'error': 'New name of table not found'}, ValidationError
+
+    admin_id = authenticate(request)
+    if not admin_id:
+        return {'error': 'Authentication failed'}, ValidationError
+
+    with connection() as conn, conn.cursor() as cur:
+        # we need to check whether the user is the admin of the restaurant
+        # whose table they are trying to delete
+        restaurant_ids = get_restaurant_ids(admin_id, cur)
+
+        if len(restaurant_ids) == 0:
+            return {'error': 'You do not administer any restaurant'}, ValidationError
+
+        cur.execute(
+            'update tables set name = %s where id = %s and restaurant_id in %s',
+            (new_table_name, table_id, restaurant_ids)
+        )
+
+        if cur.rowcount == 0:
+            return {'error': 'The table does not exist or you do not own the restaurant'}, ValidationError
+
+        conn.commit()
+        return {'success': True}
