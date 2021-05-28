@@ -53,22 +53,18 @@ def password_valid(password: str, hashed_password: str) -> bool:
 def create_user():
     """
     Creates user with name, email and password
-
     Name must not be empty, email must be a valid email and password
     must be between ${MinPasswordLength} and ${MaxPasswordLength}
-
     Sample input -
     {
         "name": "Hemil",
         "password": "abcdef",
         "email": "abc@def.com"
     }
-
     Sample output -
     {
         "jwt_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
     }
-
     Sample error -
     {
         "error": "reason for error"
@@ -126,18 +122,15 @@ def authenticate():
     """
     Takes email and password string and returns a jwt token is user
     is found. Else returns the error
-
     Sample input -
     {
         "password": "abcdef",
         "email": "abc@def.com"
     }
-
     Sample output -
     {
         "jwt_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiNWQ4NDFlNzMtZmRmNS00YmRlLTk1YjQtMWQzMWU0MDUxNzQ4In0.2nQA-voqYvUadLefIKLxPplWUQTIhqOS_iVfMNj62oE"
     }
-
     Sample error -
     {
         "error": "reason for error"
@@ -217,7 +210,6 @@ def _decoded_user_id(_request):
 def get_menu():
     """
         url - /api/v1/menu?restaurant_id=jhcvxjdsvydsgvfshgho
-
         Sample output -
         {
             "restaurant": "name of restaurant"
@@ -238,7 +230,6 @@ def get_menu():
                 },
             ],
         }
-
         Sample error -
         {
             "error": "reason for error"
@@ -288,15 +279,12 @@ def get_menu():
 def create_order():
     """
     Create an order.
-
     url - /api/v1/order?restaurant_id=<restaurant id>&table=<table>
     Headers - X-Auth-Token: <jwt>
-
     Sample error -
     {
         "error": "reason for error"
     }
-
     Sample output -
     {
         "order_id": "38trfghere yfrguoi rgrgg",
@@ -429,30 +417,23 @@ def checkout():
 def update_payment_status():
     """
     Updates transaction status for the given transaction id
-
     url - /api/v1/update_payment_status?txn_id=<txn_id>
     Headers - X-Auth-Token: <jwt>
-
     Sample output -
-
     {
         "payment_status": <payment_status>
     }
-
     Where payment status is one of -
-
     Value | Meaning
     0     | SUCCESSFUL
     1     | PENDING
     2     | INVALID
     3     | FAILED
-
     If there is a successful transaction against the order for which
     this transaction was initiated, then it returns -
     {
         "error": "This order has already been paid for"
     }
-
     :return:
     """
     user_id = _decoded_user_id(request)
@@ -536,10 +517,8 @@ class Order:
 def order_items():
     """
     Add items to order.
-
     url - /api/v1/order_items?order_id=jhcvxjdsvydsgvfshgho
     Headers - X-Auth-Token: <jwt>
-
     sample input -
     {
         "order_list": [
@@ -553,12 +532,10 @@ def order_items():
             }
         ]
     }
-
     sample output -
     {
         "success": true
     }
-
     sample error -
     {
         "error": "reason for error"
@@ -640,12 +617,18 @@ def order_items():
 
         return {"success": True}
     except (KeyError, TypeError):
-        return {'error': "Invalid Input."}, ValidationError
+        return {'error': 'Invalid input'}, ValidationError
+
 
 
 @user.route("/order_history", methods=['POST'])
 def get_order_history():
     """
+<<<<<<< HEAD
+        This route shows order history for a user.
+        Sample Input :  send JWT as token - X-Auth-Token
+        Sample Output(List of all orders) :
+=======
         This route shows orders made by a particular user.
 
         Sample Input: send a JSON, POST request. add a X-Auth-Token in Header of request and send JWT Token
@@ -670,6 +653,8 @@ def get_order_history():
                       "tax_percent": "18.00",
                       "time_and_date": "2021-05-08 03:44"
                     }
+<<<<<<< HEAD
+=======
                 ]
         }
         Here, id shows order_id.
@@ -679,7 +664,8 @@ def get_order_history():
     try:
         user_id = _decoded_user_id(request)
         if user_id is None:
-            return {"error": "Invalid Username."}
+
+            return {"error": "Username can't be None."}
         with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute(
                 "Select orders.id, restaurant.name, orders.price_excluding_tax, orders.time_and_date,"
@@ -693,6 +679,12 @@ def get_order_history():
             if cur.rowcount < 1:
                 return {"error": "No Previous Orders Found."}
             order_history = cur.fetchall()
+
+            for individual in order_history:
+                cur.execute("select name from restaurant where id = %s", individual.get('restaurant_id'))
+                if cur.rowcount < 1:
+                    return {"error": "Previous orders misplaced."}
+                individual['restaurant_id'] = cur.fetchone().get('name')
             for order in order_history:
                 order['price_excluding_tax'] = str(order['price_excluding_tax'])
                 order['tax_percent'] = str(order['tax_percent'])
