@@ -16,8 +16,8 @@ create table restaurant
     photo_url   text          not null,
     tax_percent numeric(7, 2) not null,
     admin_id    varchar(36)   not null references admin (id),
-    address text not null,
-    pincode text not null
+    address     text          not null,
+    pincode     text          not null
 );
 -- will add more things like co ordinates when we get to browse
 -- lets focus on core features first
@@ -38,7 +38,7 @@ create table orders
     id                  varchar(36) primary key,
     user_id             varchar(36) not null references users (id),
     restaurant_id       varchar(36) not null references restaurant (id),
-    table_name          text        not null references tables (id),
+    table_id            int         not null references tables (id),
     payment_status      int         not null,
     price_excluding_tax numeric(7, 2),
     tax                 numeric(7, 2),

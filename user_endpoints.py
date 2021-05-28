@@ -640,6 +640,8 @@ def order_items():
                 prices[id] = float(price)
 
             for order in all_orders:
+                print('menu id: ' + order.menu_id)
+                print('price: ' + str(prices[order.price]))
                 order.price = prices[order.menu_id] * order.quantity
 
             # execute many raises type error for some reason
@@ -652,6 +654,7 @@ def order_items():
                      order.price, order.quantity, order.price)
                 )
             price_excluding_tax = sum(map(lambda o: o.price, all_orders))
+
             cur.execute("update orders set price_excluding_tax = price_excluding_tax + %s where id = %s",
                         (price_excluding_tax, order_id))
             conn.commit()
