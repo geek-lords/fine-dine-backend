@@ -660,8 +660,8 @@ def order_items():
             conn.commit()
 
         return {"success": True}
-    except (KeyError, TypeError):
-        print('Invalid input')
+    except (KeyError, TypeError) as e:
+        print('Invalid input: ' + e)
         return {'error': 'Invalid input'}, ValidationError
 
 
