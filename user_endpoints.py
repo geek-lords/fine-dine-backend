@@ -49,6 +49,11 @@ def password_valid(password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 
+@user.route('/dummy')
+def dummy():
+    return ''
+
+
 @user.route('/create_user', methods=['POST'])
 def create_user():
     """
