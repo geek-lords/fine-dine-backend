@@ -17,23 +17,23 @@ MinPasswordLength = 5
 
 user = Blueprint('user', __name__)
 
-scheduler = BackgroundScheduler()
-
-
-def keep_server_alive():
-    requests.get(
-        'https://fine-dine-backend.herokuapp.com/api/v1/menu?restaurant_id=6902d892-4d75-44fe-85bd-b92a60260f70'
-    )
-    print('request sent')
-
-
-scheduler.add_job(
-    keep_server_alive,
-    'interval',
-    minutes=25,
-)
-
-scheduler.start()
+# scheduler = BackgroundScheduler()
+#
+#
+# def keep_server_alive():
+#     requests.get(
+#         'https://fine-dine-backend.herokuapp.com/api/v1/menu?restaurant_id=6902d892-4d75-44fe-85bd-b92a60260f70'
+#     )
+#     print('request sent')
+#
+#
+# scheduler.add_job(
+#     keep_server_alive,
+#     'interval',
+#     minutes=25,
+# )
+#
+# scheduler.start()
 
 # HTTP error code for validation error
 ValidationError = 401
@@ -669,11 +669,10 @@ def order_items():
 @user.route("/order_history", methods=['POST'])
 def get_order_history():
     """
-<<<<<<< HEAD
         This route shows order history for a user.
         Sample Input :  send JWT as token - X-Auth-Token
         Sample Output(List of all orders) :
-=======
+
         This route shows orders made by a particular user.
 
         Sample Input: send a JSON, POST request. add a X-Auth-Token in Header of request and send JWT Token
@@ -686,7 +685,7 @@ def get_order_history():
                       "id": "3a9d8156-6c65-4a61-9f19-df612251223b",
                       "name": "Joshi Bhojangrih",
                       "photo_url": "goal.jpeg",
-                      "price_excluding_tax": "650.00",
+                      "price": "650.00",
                       "tax_percent": "18.00",
                       "time_and_date": "2021-05-08 03:44"
                     },
@@ -694,12 +693,10 @@ def get_order_history():
                       "id": "3a9d8156-6c65-4a61-9f19-df612254223b",
                       "name": "Joshi Bhojangrih",
                       "photo_url": "goal.jpeg",
-                      "price_excluding_tax": "350.00",
+                      "price": "350.00",
                       "tax_percent": "18.00",
                       "time_and_date": "2021-05-08 03:44"
                     }
-<<<<<<< HEAD
-=======
                 ]
         }
         Here, id shows order_id.
@@ -712,28 +709,38 @@ def get_order_history():
             print('Username not found')
             return {"error": "Username can't be None."}, ValidationError
 
-        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
+        with connection() as conn, conn.cursor() as cur:
             cur.execute(
-                "Select orders.id, restaurant.name, orders.price_excluding_tax, orders.time_and_date,"
+                "Select orders.id, restaurant.name, orders.price_excluding_tax+orders.tax, orders.time_and_date,"
                 "restaurant.tax_percent,restaurant.photo_url "
                 "from orders "
                 "join restaurant on orders.restaurant_id = restaurant.id "
                 "where orders.user_id= %s "
                 "order by orders.time_and_date desc",
-                user_id
+                (user_id,)
             )
 
             order_history = cur.fetchall()
 
-            for order in order_history:
-                order['price_excluding_tax'] = str(order['price_excluding_tax'])
-                order['tax_percent'] = str(order['tax_percent'])
+            result = []
+
+            for order_id, name, price, time_and_date, tax, photo_url in order_history:
                 # IST is an abbreviation. So I have used capital letters
                 # which gives a warning. The next comment disables the warning
                 # noinspection PyPep8Naming
-                time_and_date_in_IST = order['time_and_date'].astimezone(timezone('Asia/Kolkata'))
-                order['time_and_date'] = time_and_date_in_IST.strftime("%I:%M %p %d/%m/%Y")
-            return {"history": order_history}
+                time_and_date_in_IST = time_and_date.astimezone(timezone('Asia/Kolkata'))
+                time_and_date = time_and_date_in_IST.strftime("%I:%M %p %d/%m/%Y")
+
+                result.append({
+                    'id': order_id,
+                    'name': name,
+                    'photo_url': photo_url,
+                    'price': str(price),
+                    'tax_percent': str(tax),
+                    'time_and_date': time_and_date
+                })
+
+            return {"history": result}
 
     except KeyError:
         print('Invalid input')
