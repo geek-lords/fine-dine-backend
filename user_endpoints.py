@@ -640,9 +640,9 @@ def order_items():
                 prices[id] = float(price)
 
             for order in all_orders:
+                order.price = prices[order.menu_id] * order.quantity
                 print('menu id: ' + str(order.menu_id))
                 print('price: ' + str(prices[order.price]))
-                order.price = prices[order.menu_id] * order.quantity
 
             # execute many raises type error for some reason
             for order in all_orders:
