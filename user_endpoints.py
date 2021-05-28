@@ -36,7 +36,7 @@ scheduler.add_job(
 scheduler.start()
 
 # HTTP error code for validation error
-ValidationError = 422
+ValidationError = 401
 
 MaxPasswordLength = 70
 
@@ -114,7 +114,7 @@ def create_user():
     except KeyError:
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
     except pymysql.err.IntegrityError:
-        return {'error': 'User already exists'}
+        return {'error': 'User already exists'}, ValidationError
 
 
 @user.route('/authenticate', methods=['POST'])
@@ -157,7 +157,7 @@ def authenticate():
             # validating email and assigning the valid email back to email
             email = validate_email(email).email
         except EmailNotValidError:
-            return {'error': 'email is not valid'}
+            return {'error': 'email is not valid'}, ValidationError
 
         with connection() as conn, conn.cursor() as cur:
             cur.execute(
@@ -238,7 +238,7 @@ def get_menu():
         """
     restaurant_id = request.args.get('restaurant_id')
     if not restaurant_id:
-        return {'error': 'Invalid input. One or more parameters absent'}
+        return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
 
     with connection() as conn, conn.cursor() as cur:
         cur.execute('select name from restaurant where id = %s', (restaurant_id,))
@@ -664,8 +664,8 @@ def get_order_history():
     try:
         user_id = _decoded_user_id(request)
         if user_id is None:
+            return {"error": "Username can't be None."}, ValidationError
 
-            return {"error": "Username can't be None."}
         with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute(
                 "Select orders.id, restaurant.name, orders.price_excluding_tax, orders.time_and_date,"
@@ -677,14 +677,15 @@ def get_order_history():
                 user_id
             )
             if cur.rowcount < 1:
-                return {"error": "No Previous Orders Found."}
+                return {"error": "No Previous Orders Found."}, ValidationError
+
             order_history = cur.fetchall()
 
-            for individual in order_history:
-                cur.execute("select name from restaurant where id = %s", individual.get('restaurant_id'))
-                if cur.rowcount < 1:
-                    return {"error": "Previous orders misplaced."}
-                individual['restaurant_id'] = cur.fetchone().get('name')
+            # for individual in order_history:
+            #     cur.execute("select name from restaurant where id = %s", individual.get('restaurant_id'))
+            #     if cur.rowcount < 1:
+            #         return {"error": "Previous orders misplaced."}
+            #     individual['restaurant_id'] = cur.fetchone().get('name')
             for order in order_history:
                 order['price_excluding_tax'] = str(order['price_excluding_tax'])
                 order['tax_percent'] = str(order['tax_percent'])
@@ -696,7 +697,7 @@ def get_order_history():
             return {"history": order_history}
 
     except KeyError:
-        return {"error": "User Token expected."}
+        return {"error": "User Token expected."}, ValidationError
 
 
 @user.route("/order_history/<order_id>", methods=['POST'])
@@ -727,18 +728,19 @@ def individual_order_history(order_id):
     try:
         user_id = _decoded_user_id(request)
         if user_id is None:
-            return {"error": "User ID can't be None."}
+            return {"error": "User ID can't be None."}, ValidationError
+
         #     Authenticating the Order and User Relation
         with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute("Select user_id from orders where id = %s", order_id)
             order_user_id = cur.fetchone()['user_id']
             if str(order_user_id) != user_id:
-                return {"error": "Invalid Requesting User."}
+                return {"error": "Invalid Requesting User."}, ValidationError
             # Get Overall Information
             cur.execute("select menu.name, menu.price, order_items.quantity from menu join order_items on "
                         "menu.id = order_items.menu_id where order_items.order_id = %s ", order_id)
             if cur.rowcount < 1:
-                return {"error": "Invalid Order Request"}
+                return {"error": "Invalid Order Request"}, ValidationError
             bill = cur.fetchall()
             for bills in bill:
                 bills['price'] = str(bills['price'])
@@ -746,7 +748,7 @@ def individual_order_history(order_id):
             # return {"bill": bill}
             return {"bill": bill}
     except KeyError:
-        return {"error": "Invalid Parameters found. "}
+        return {"error": "Invalid Parameters found. "}, ValidationError
 
 
 @user.route('/user', methods=['GET'])

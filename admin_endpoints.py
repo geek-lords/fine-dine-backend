@@ -17,7 +17,7 @@ from db_utils import connection
 admin = Blueprint('admin', __name__)
 
 # HTTP Errors
-ValidationError = 422
+ValidationError = 401
 
 MinPasswordLength = 5
 
@@ -130,7 +130,7 @@ def create_admin():
                 if cur.rowcount == 1:
                     return {"error": "Email Address already exists."}, ValidationError
         except EmailNotValidError:
-            return {'error': 'Email Address is not valid'}
+            return {'error': 'Email Address is not valid'}, ValidationError
 
         if not contact_number.isdigit() or len(contact_number) != 10:
             return {"error": "Mobile Number is not valid."}
@@ -142,8 +142,8 @@ def create_admin():
         password = str(request.json["password"]).strip()
 
         if len(password) < MinPasswordLength or len(password) > MaxPasswordLength:
-            return {
-                       'error': f'password should be between {MinPasswordLength} ' f'and {MaxPasswordLength} characters'}, ValidationError
+            return ({'error': f'password should be between {MinPasswordLength} ' f'and {MaxPasswordLength} characters'},
+                    ValidationError)
 
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         try:
@@ -156,12 +156,12 @@ def create_admin():
             jwt_token = jwt.encode({"user_id": admin_id, "is_admin": True}, jwt_secret, algorithm='HS256')
             return {'jwt_token': jwt_token}
         except pymysql.IntegrityError:
-            return {'error': "Credentials already registered with other account. "}
+            return {'error': "Credentials already registered with other account. "}, ValidationError
 
     except KeyError:
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
     except pymysql.err.IntegrityError:
-        return {'error': 'User already exists'}
+        return {'error': 'User already exists'}, ValidationError
 
 
 @admin.route("/authenticate", methods=['POST'])
@@ -179,6 +179,7 @@ def authenticate_user():
     try:
         if not request.json:
             return {"error": "No JSON Data found"}, ValidationError
+
         email = str(request.json["email"]).strip()
         password = str(request.json['password']).strip()
         with connection() as conn, conn.cursor() as cur:
@@ -235,7 +236,6 @@ def get_restaurant():
 
 @admin.route("/add_restaurant", methods=['GET'])
 def add_restaurant():
-
     """
         Sample Input :
             {
@@ -289,7 +289,7 @@ def add_restaurant():
             conn.commit()
         return {'restaurant_id': restaurant_id}
     except KeyError:
-        return {"error": "Some Credentials are missing."}
+        return {"error": "Some Credentials are missing."}, ValidationError
 
 
 @admin.route('/create_table', methods=['POST'])
