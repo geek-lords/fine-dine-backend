@@ -1,17 +1,18 @@
 import json
 from uuid import uuid4
-from user_endpoints import hash_password
+
+import bcrypt
 import jwt
+import pymysql
 import qrcode
+import requests
 from PIL import Image
+from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, request, send_from_directory
 from jwt import InvalidSignatureError
-from email_validator import EmailNotValidError, validate_email
+
 from config import jwt_secret
 from db_utils import connection
-import pymysql
-import bcrypt
-import requests
 
 admin = Blueprint('admin', __name__)
 
