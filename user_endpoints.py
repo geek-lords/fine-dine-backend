@@ -17,26 +17,26 @@ MinPasswordLength = 5
 
 user = Blueprint('user', __name__)
 
-scheduler = BackgroundScheduler()
-
-
-def keep_server_alive():
-    requests.get(
-        'https://fine-dine-backend.herokuapp.com/api/v1/menu?restaurant_id=6902d892-4d75-44fe-85bd-b92a60260f70'
-    )
-    print('request sent')
-
-
-scheduler.add_job(
-    keep_server_alive,
-    'interval',
-    minutes=25,
-)
-
-scheduler.start()
+# scheduler = BackgroundScheduler()
+#
+#
+# def keep_server_alive():
+#     requests.get(
+#         'https://fine-dine-backend.herokuapp.com/api/v1/menu?restaurant_id=6902d892-4d75-44fe-85bd-b92a60260f70'
+#     )
+#     print('request sent')
+#
+#
+# scheduler.add_job(
+#     keep_server_alive,
+#     'interval',
+#     minutes=25,
+# )
+#
+# scheduler.start()
 
 # HTTP error code for validation error
-ValidationError = 422
+ValidationError = 401
 
 MaxPasswordLength = 70
 
@@ -47,6 +47,11 @@ def hash_password(password: str) -> str:
 
 def password_valid(password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+
+@user.route('/dummy')
+def dummy():
+    return ''
 
 
 @user.route('/create_user', methods=['POST'])
@@ -73,16 +78,19 @@ def create_user():
     """
     try:
         if not request.json:
+            print('No json data found')
             return {'error': 'No json data found'}, ValidationError
 
         name = str(request.json['name']).strip()
 
         if len(name) == 0:
+            print('name invalid or empty')
             return {'error': 'name invalid or empty'}, ValidationError
 
         password = str(request.json['password']).strip()
 
         if len(password) < MinPasswordLength or len(password) > MaxPasswordLength:
+            print('invalid password')
             return (
                 {
                     'error': f'password should be between {MinPasswordLength} '
@@ -96,6 +104,7 @@ def create_user():
             # validating email and assigning the valid email back to email
             email = validate_email(email).email
         except EmailNotValidError:
+            print('email not valid')
             return {'error': 'email is not valid'}
 
         with connection() as conn, conn.cursor() as cur:
@@ -112,9 +121,11 @@ def create_user():
                 'jwt_token': jwt_token,
             }
     except KeyError:
+        print('Invalid input. One or more parameters absent')
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
     except pymysql.err.IntegrityError:
-        return {'error': 'User already exists'}
+        print('User already exists')
+        return {'error': 'User already exists'}, ValidationError
 
 
 @user.route('/authenticate', methods=['POST'])
@@ -139,12 +150,14 @@ def authenticate():
     """
     try:
         if not request.json:
+            print('No json data found')
             return {'error': 'No json data found'}, ValidationError
 
         email = str(request.json['email'])
         password = str(request.json['password'])
 
         if len(password) < MinPasswordLength or len(password) > MaxPasswordLength:
+            print('Invalid password')
             return (
                 {
                     'error': f'password should be between {MinPasswordLength} '
@@ -157,7 +170,8 @@ def authenticate():
             # validating email and assigning the valid email back to email
             email = validate_email(email).email
         except EmailNotValidError:
-            return {'error': 'email is not valid'}
+            print('email is not valid')
+            return {'error': 'email is not valid'}, ValidationError
 
         with connection() as conn, conn.cursor() as cur:
             cur.execute(
@@ -168,6 +182,7 @@ def authenticate():
             )
 
             if cur.rowcount == 0:
+                print('Invalid email or password')
                 return {'error': 'Invalid email or password'}
 
             row = cur.fetchone()
@@ -184,6 +199,7 @@ def authenticate():
             # if password is not valid
             return {'error': 'Invalid email or password'}
     except KeyError:
+        print('Invalid input. One or more parameters absent')
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
 
 
@@ -238,12 +254,14 @@ def get_menu():
         """
     restaurant_id = request.args.get('restaurant_id')
     if not restaurant_id:
-        return {'error': 'Invalid input. One or more parameters absent'}
+        print('restaurant id missing')
+        return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
 
     with connection() as conn, conn.cursor() as cur:
         cur.execute('select name from restaurant where id = %s', (restaurant_id,))
 
         if cur.rowcount == 0:
+            print('restaurant id does not exist')
             return {'error', 'Restaurant does not exist'}, ValidationError
 
         restaurant = cur.fetchone()[0]
@@ -294,14 +312,17 @@ def create_order():
     try:
         user_id = _decoded_user_id(request)
         if not user_id:
+            print('Authentication failure')
             return {'error': 'Authentication failure'}, ValidationError
 
         table = request.args.get('table')
         if not table:
+            print('Table absent')
             return {'error': 'table parameter not found in request'}, ValidationError
 
         restaurant_id = request.args.get('restaurant_id')
         if not restaurant_id:
+            print('Restaurant id not found')
             return {'error': 'restaurant id not found'}, ValidationError
 
         with connection() as conn, conn.cursor() as cur:
@@ -311,6 +332,7 @@ def create_order():
             )
 
             if cur.rowcount == 0:
+                print('Restaurant id does not exist')
                 return {'error': 'Restaurant id does not exist'}, ValidationError
 
             tax_percent = float(cur.fetchone()[0])
@@ -322,6 +344,7 @@ def create_order():
             )
 
             if cur.rowcount == 0:
+                print('Table not found')
                 return {'error': 'Table not found'}, ValidationError
 
             order_id = str(uuid4())
@@ -335,6 +358,7 @@ def create_order():
             conn.commit()
         return {'order_id': order_id, 'tax_percent': tax_percent}
     except KeyError:
+        print('Invalid input. One or more parameters absent')
         return {'error': 'Invalid input. One or more parameters absent'}, ValidationError
 
 
@@ -342,10 +366,12 @@ def create_order():
 def checkout():
     order_id = request.args.get('order_id')
     if not order_id:
+        print('order id not found')
         return {'error': 'Order id not found'}, ValidationError
 
     user_id = _decoded_user_id(request)
     if not user_id:
+        print('Authentication failure')
         return {'error': 'Authentication failure'}, ValidationError
 
     with connection() as conn, conn.cursor() as cur:
@@ -356,6 +382,7 @@ def checkout():
         )
 
         if cur.rowcount == 0:
+            print('Order id does not exist')
             return {'error': 'Invalid input. Order id does not exist'}, ValidationError
 
         row = cur.fetchone()
@@ -364,9 +391,11 @@ def checkout():
         restaurant_id = row[2]
 
         if user_id != user_id_who_created_the_order:
+            print('user id not the same as the person as user id who created the order')
             return {'error': 'Authentication failure'}, ValidationError
 
         if payment_status == paytm.PaymentStatus.SUCCESSFUL.value:
+            print('Order has already been paid for')
             return {'error': 'Order has already been paid'}, ValidationError
 
         cur.execute(
@@ -377,6 +406,7 @@ def checkout():
         price = cur.fetchone()[0]
         # sum should return 0 for empty list. But it is somehow returning None
         if price == 0 or price is None:
+            print('no order items found')
             return {'error': 'Please book something before checking out'}, ValidationError
 
         cur.execute(
@@ -438,10 +468,12 @@ def update_payment_status():
     """
     user_id = _decoded_user_id(request)
     if not user_id:
+        print('Authentication failed')
         return {'error': 'Authentication failed'}, ValidationError
 
     txn_id = request.args.get('txn_id')
     if not txn_id:
+        print('Transaction id not found')
         return {'error': 'Transaction id not found'}, ValidationError
 
     with connection() as conn, conn.cursor() as cur:
@@ -452,6 +484,7 @@ def update_payment_status():
         )
 
         if cur.rowcount == 0:
+            print('Transaction id does not exist')
             return {'error': 'Transaction id does not exist'}, ValidationError
 
         row = cur.fetchone()
@@ -460,6 +493,7 @@ def update_payment_status():
 
         cur.execute('select user_id from orders where id = %s', (order_id,))
         if user_id != cur.fetchone()[0]:
+            print('user id not same as person who created the order')
             return {'error': 'Authentication failed'}, ValidationError
 
         # if the payment is not done or pending, only then we need to update the status
@@ -478,6 +512,7 @@ def update_payment_status():
         )
 
         if cur.rowcount != 0:
+            print('Order has already been paid for')
             return {'error': 'This order has already been paid for. '
                              'Please cancel the transaction on your end'}, ValidationError
 
@@ -543,30 +578,36 @@ def order_items():
     """
     try:
         if not request.json:
+            print('no json found')
             return {"error": "Invalid Request/ No Json Data Found."}, ValidationError
 
         order_id = request.args.get("order_id")
 
         if not order_id:
+            print('no order id found')
             return {'error': 'Invalid request'}, ValidationError
 
         user_id = _decoded_user_id(request)
         if not user_id:
+            print('Authentication error')
             return {'error': 'Authentication error'}, ValidationError
 
         all_orders = list(map(lambda json: Order(order_id, int(json["menu_id"]), json["quantity"]),
                               request.json['order_list']))
 
         if len(all_orders) == 0:
+            print('no orders found')
             return {'error': 'order items cannot be empty'}, ValidationError
 
         for order in all_orders:
             if not order.is_valid():
+                print('invalid input. menu id: ' + order.menu_id + '\t quantity: ' + order.quantity)
                 return {"error": "Invalid input"}, ValidationError
 
         menu_ids = tuple(map(lambda order: order.menu_id, all_orders))
 
         if len(set(menu_ids)) != len(menu_ids):
+            print('menu id repeated: %s' % list(menu_ids))
             return {'error': 'Menu id cannot be repeated'}, ValidationError
 
         with connection() as conn, conn.cursor() as cur:
@@ -576,9 +617,11 @@ def order_items():
             )
 
             if cur.rowcount == 0:
+                print('No such order found')
                 return {'error': 'No such order found'}, ValidationError
 
             if cur.fetchone()[0] != user_id:
+                print('Authorization error')
                 return {'error': 'Authorization error'}, ValidationError
 
             cur.execute('select id, price, restaurant_id from menu where id in %s', (menu_ids,))
@@ -586,12 +629,15 @@ def order_items():
             restaurant_ids = list(map(lambda row: row[2], rows))
 
             if len(restaurant_ids) == 0:
+                print('Menu id does not exist')
                 return {'error': 'Menu id does not exist'}, ValidationError
 
             if len(set(restaurant_ids)) != 1:
+                print('Cannot order from multiple restaurants')
                 return {'error': 'Cannot order from multiple restaurants'}, ValidationError
 
             if len(restaurant_ids) != len(menu_ids):
+                print('One or more menu ides does not exist')
                 return {'error': 'One or more menu ids does not exist'}, ValidationError
 
             prices = {}
@@ -600,6 +646,8 @@ def order_items():
 
             for order in all_orders:
                 order.price = prices[order.menu_id] * order.quantity
+                print('menu id: ' + str(order.menu_id))
+                print('price: ' + str(prices[order.menu_id]))
 
             # execute many raises type error for some reason
             for order in all_orders:
@@ -611,12 +659,14 @@ def order_items():
                      order.price, order.quantity, order.price)
                 )
             price_excluding_tax = sum(map(lambda o: o.price, all_orders))
+
             cur.execute("update orders set price_excluding_tax = price_excluding_tax + %s where id = %s",
                         (price_excluding_tax, order_id))
             conn.commit()
 
         return {"success": True}
-    except (KeyError, TypeError):
+    except (KeyError, TypeError) as e:
+        print('Invalid input: ' + e)
         return {'error': 'Invalid input'}, ValidationError
 
 
@@ -624,11 +674,10 @@ def order_items():
 @user.route("/order_history", methods=['POST'])
 def get_order_history():
     """
-<<<<<<< HEAD
         This route shows order history for a user.
         Sample Input :  send JWT as token - X-Auth-Token
         Sample Output(List of all orders) :
-=======
+
         This route shows orders made by a particular user.
 
         Sample Input: send a JSON, POST request. add a X-Auth-Token in Header of request and send JWT Token
@@ -641,7 +690,7 @@ def get_order_history():
                       "id": "3a9d8156-6c65-4a61-9f19-df612251223b",
                       "name": "Joshi Bhojangrih",
                       "photo_url": "goal.jpeg",
-                      "price_excluding_tax": "650.00",
+                      "price": "650.00",
                       "tax_percent": "18.00",
                       "time_and_date": "2021-05-08 03:44"
                     },
@@ -649,12 +698,10 @@ def get_order_history():
                       "id": "3a9d8156-6c65-4a61-9f19-df612254223b",
                       "name": "Joshi Bhojangrih",
                       "photo_url": "goal.jpeg",
-                      "price_excluding_tax": "350.00",
+                      "price": "350.00",
                       "tax_percent": "18.00",
                       "time_and_date": "2021-05-08 03:44"
                     }
-<<<<<<< HEAD
-=======
                 ]
         }
         Here, id shows order_id.
@@ -664,39 +711,44 @@ def get_order_history():
     try:
         user_id = _decoded_user_id(request)
         if user_id is None:
-
-            return {"error": "Username can't be None."}
-        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
+            print('Username not found')
+            return {"error": "Username can't be None."}, ValidationError
+        with connection() as conn, conn.cursor() as cur:
             cur.execute(
-                "Select orders.id, restaurant.name, orders.price_excluding_tax, orders.time_and_date,"
+                "Select orders.id, restaurant.name, orders.price_excluding_tax+orders.tax, orders.time_and_date,"
                 "restaurant.tax_percent,restaurant.photo_url "
                 "from orders "
                 "join restaurant on orders.restaurant_id = restaurant.id "
                 "where orders.user_id= %s "
                 "order by orders.time_and_date desc",
-                user_id
+                (user_id,)
             )
-            if cur.rowcount < 1:
-                return {"error": "No Previous Orders Found."}
+
             order_history = cur.fetchall()
 
-            for individual in order_history:
-                cur.execute("select name from restaurant where id = %s", individual.get('restaurant_id'))
-                if cur.rowcount < 1:
-                    return {"error": "Previous orders misplaced."}
-                individual['restaurant_id'] = cur.fetchone().get('name')
-            for order in order_history:
-                order['price_excluding_tax'] = str(order['price_excluding_tax'])
-                order['tax_percent'] = str(order['tax_percent'])
+            result = []
+
+            for order_id, name, price, time_and_date, tax, photo_url in order_history:
                 # IST is an abbreviation. So I have used capital letters
                 # which gives a warning. The next comment disables the warning
                 # noinspection PyPep8Naming
-                time_and_date_in_IST = order['time_and_date'].astimezone(timezone('Asia/Kolkata'))
-                order['time_and_date'] = time_and_date_in_IST.strftime("%I:%M %p %d/%m/%Y")
-            return {"history": order_history}
+                time_and_date_in_IST = time_and_date.astimezone(timezone('Asia/Kolkata'))
+                time_and_date = time_and_date_in_IST.strftime("%I:%M %p %d/%m/%Y")
+
+                result.append({
+                    'id': order_id,
+                    'name': name,
+                    'photo_url': photo_url,
+                    'price': str(price),
+                    'tax_percent': str(tax),
+                    'time_and_date': time_and_date
+                })
+
+            return {"history": result}
 
     except KeyError:
-        return {"error": "User Token expected."}
+        print('Invalid input')
+        return {"error": "User Token expected."}, ValidationError
 
 
 @user.route("/order_history/<order_id>", methods=['POST'])
@@ -726,27 +778,40 @@ def individual_order_history(order_id):
     """
     try:
         user_id = _decoded_user_id(request)
-        if user_id is None:
-            return {"error": "User ID can't be None."}
+        if not user_id:
+            print('user id not found')
+            return {"error": "User ID can't be None."}, ValidationError
+
         #     Authenticating the Order and User Relation
         with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute("Select user_id from orders where id = %s", order_id)
             order_user_id = cur.fetchone()['user_id']
+
             if str(order_user_id) != user_id:
-                return {"error": "Invalid Requesting User."}
+                print('order user id not same as user id')
+                return {"error": "Invalid Requesting User."}, ValidationError
+
             # Get Overall Information
-            cur.execute("select menu.name, menu.price, order_items.quantity from menu join order_items on "
-                        "menu.id = order_items.menu_id where order_items.order_id = %s ", order_id)
+            cur.execute(
+                "select menu.name, menu.price, order_items.quantity from menu "
+                "join order_items on menu.id = order_items.menu_id "
+                "where order_items.order_id = %s ",
+                order_id,
+            )
+
             if cur.rowcount < 1:
-                return {"error": "Invalid Order Request"}
+                print('order items not found')
+                return {"error": "Invalid Order Request"}, ValidationError
+
             bill = cur.fetchall()
             for bills in bill:
                 bills['price'] = str(bills['price'])
                 bills['quantity'] = str(bills['quantity'])
-            # return {"bill": bill}
+
             return {"bill": bill}
     except KeyError:
-        return {"error": "Invalid Parameters found. "}
+        print('invalid input')
+        return {"error": "Invalid Parameters found. "}, ValidationError
 
 
 @user.route('/user', methods=['GET'])
@@ -764,6 +829,7 @@ def get_user():
     """
     user_id = _decoded_user_id(request)
     if not user_id:
+        print('Authentication error')
         return {'error': 'Authentication error'}, ValidationError
 
     with connection() as conn, conn.cursor() as cur:
@@ -803,21 +869,25 @@ def update_user():
     """
     user_id = _decoded_user_id(request)
     if not user_id:
+        print('Authentication error')
         return {'error': 'Authentication error'}, ValidationError
 
     if not request.json:
+        print('no json data found')
         return {'error': 'Invalid input'}, ValidationError
 
     name = str(request.json.get('name', '')).strip()
     email = str(request.json.get('email', '')).strip()
 
     if not email or not name:
+        print('Email or name not found')
         return {'error': 'Invalid input'}, ValidationError
 
     try:
         # validating email and assigning the valid email back to email
         email = validate_email(email).email
     except EmailNotValidError:
+        print('invalid email')
         return {'error': 'email is not valid'}, ValidationError
 
     with connection() as conn, conn.cursor() as cur:
