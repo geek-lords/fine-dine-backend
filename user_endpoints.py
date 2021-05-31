@@ -713,7 +713,6 @@ def get_order_history():
         if user_id is None:
             print('Username not found')
             return {"error": "Username can't be None."}, ValidationError
-
         with connection() as conn, conn.cursor() as cur:
             cur.execute(
                 "Select orders.id, restaurant.name, orders.price_excluding_tax+orders.tax, orders.time_and_date,"

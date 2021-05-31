@@ -515,3 +515,69 @@ def get_all_tables():
         )
 
         return {'tables': list(map(lambda x: {'id': x[0], 'name': x[1]}, cur.fetchall()))}
+
+
+@admin.route("/profile", methods=['GET'])
+def get_profile():
+    """
+        Sample Input:
+            send JWTToken from Header with key - "X-Auth-Token"
+        Sample Output:
+            {
+                "admin_information": {
+                    "contact_number": "9373496549",
+                    "email_address": "mynameissarveshjoshi@gmail.com",
+                    "f_name": "Sarvesh",
+                    "l_name": "Joshi"
+                }
+            }
+    """
+
+    admin_id = authenticate(request)
+    if not admin_id:
+        return {"error": "User Authentication failed."}, ValidationError
+    with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
+        cur.execute("SELECT f_name, l_name, email_address, contact_number from admin where id=%s", admin_id)
+        if cur.rowcount == 0:
+            return {"error": admin_id + "Requested User doesn't exists."}, ValidationError
+        user = cur.fetchone()
+        return {"admin_information": user}
+
+
+@admin.route("/profile", methods=['POST'])
+def update_profile():
+    admin_id = authenticate(request)
+    if not admin_id:
+        return {"error": "User Authentication Failed"}, ValidationError
+    if not request.json:
+        return {'error': "No JSON Data found."}, ValidationError
+
+    try:
+        f_name = str(request.json["f_name"])
+        l_name = str(request.json["l_name"])
+        contact = str(request.json["contact_number"])
+        email_address = str(request.json["email_address"])
+        if 1 > len(f_name) or len(f_name) > 50 or 1 > len(l_name) or len(l_name) > 50:
+            return {"error": "Length of Name fields should be between 1 and 50."}, ValidationError
+        if not contact.isdigit() or len(contact) != 10:
+            return {"error": "Mobile Number is not valid."}
+        try:
+            # validating email and assigning the valid email back to email
+            email_id = validate_email(email_address).email
+            with connection() as conn, conn.cursor() as cur:
+                cur.execute("select * from admin where id = %s", admin_id)
+                if cur.rowcount < 1:
+                    return {"error": "Requested User Doesn't Exists"}, ValidationError
+                cur.execute(
+                    "update admin set f_name = %s, l_name = %s,email_address = %s, contact_number = %s where id = %s",
+                    (f_name, l_name, email_id, contact, admin_id))
+                conn.commit()
+            return {"success": 'success'}, 200
+        except EmailNotValidError:
+            return {'error': 'Email Address is not valid'}, ValidationError
+        except pymysql.err.IntegrityError:
+            return {'error': "Email/Contact Number already registered with other account."}, ValidationError
+        except pymysql.InternalError:
+            return {"error": "User doesn't exists."}, ValidationError
+    except KeyError:
+        return {"error": "Invalid Credentials"}, ValidationError
