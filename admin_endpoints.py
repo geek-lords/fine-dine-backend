@@ -637,6 +637,20 @@ def get_menus():
 
 @admin.route("/new_menu", methods=["POST"])
 def new_menu():
+    """
+        Sample Input: JWT Token in Header
+        {
+            "name":"Name",
+            "description":"Desc",
+            "photo":"Photo.jpeg",
+            "price":20.0,
+            "restaurant_id":"ID"
+        }
+        Sample Output:
+        {
+            'success': "New Menu Successfully added."
+        }
+    """
     try:
         if not request.json:
             return {"error": "JSON Data not found."}, ValidationError
@@ -669,6 +683,17 @@ def new_menu():
 
 @admin.route("/delete_menu", methods=["POST"])
 def delete_menu():
+
+    """
+        Sample Input: UserID in Header
+            {
+                "menu_id":<menu_id>
+            }
+        Sample Output:
+            {
+                "success": "Successfully Deleted the Menu."
+            }
+    """
     if not request.json:
         return {"error": "JSON Data not found."}, ValidationError
     admin_id = authenticate(request)
