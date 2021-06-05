@@ -230,6 +230,10 @@ def get_restaurant():
                     }
     """
     admin_id = authenticate(request)
+
+    if not admin_id:
+        return {'error': 'Authentication error'}, ValidationError
+
     with connection() as con, con.cursor(pymysql.cursors.DictCursor) as cur:
         cur.execute("Select id,name,photo_url,address from restaurant where admin_id = %s", admin_id)
         return {"restaurant details": cur.fetchall()}
