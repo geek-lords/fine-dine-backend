@@ -618,9 +618,13 @@ def order_items():
                 print('Authorization error')
                 return {'error': 'Authorization error'}, ValidationError
 
-            cur.execute('select id, price, restaurant_id from menu where id in %s', (menu_ids,))
+            cur.execute('select id, price, restaurant_id, active_menu from menu where id in %s', (menu_ids,))
             rows = cur.fetchall()
             restaurant_ids = list(map(lambda row: row[2], rows))
+            active_menus = list(map(lambda row: row[3], rows))
+
+            if 1 in active_menus:
+                return {"error": "Can't order Disabled Items."}, ValidationError
 
             if len(restaurant_ids) == 0:
                 print('Menu id does not exist')
@@ -635,7 +639,7 @@ def order_items():
                 return {'error': 'One or more menu ids does not exist'}, ValidationError
 
             prices = {}
-            for id, price, _ in rows:
+            for id, price, _, x in rows:
                 prices[id] = float(price)
 
             for order in all_orders:
@@ -662,7 +666,6 @@ def order_items():
     except (KeyError, TypeError) as e:
         print('Invalid input: ' + e)
         return {'error': 'Invalid input'}, ValidationError
-
 
 
 @user.route("/order_history", methods=['POST'])
@@ -707,7 +710,6 @@ def get_order_history():
         if user_id is None:
             print('Username not found')
             return {"error": "Username can't be None."}, ValidationError
-
         with connection() as conn, conn.cursor() as cur:
             cur.execute(
                 "Select orders.id, restaurant.name, orders.price_excluding_tax+orders.tax, orders.time_and_date,"

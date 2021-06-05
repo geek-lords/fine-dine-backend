@@ -29,8 +29,11 @@ create table menu
     description   text          not null,
     photo_url     text          not null,
     restaurant_id varchar(36)   not null references restaurant (id),
-    price         numeric(7, 2) not null
+    price         numeric(7, 2) not null,
+    active_menu tinyint not null default 0
 );
+
+--default 0 is True by default.
 
 
 create table orders
