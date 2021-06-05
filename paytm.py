@@ -15,6 +15,19 @@ class PaymentStatus(Enum):
     FAILED = 3
     NOT_PAID = 4
 
+    @staticmethod
+    def parse(num):
+        if num == str(PaymentStatus.SUCCESSFUL.value):
+            return PaymentStatus.SUCCESSFUL
+        if num == str(PaymentStatus.PENDING.value):
+            return PaymentStatus.PENDING
+        if num == str(PaymentStatus.INVALID.value):
+            return PaymentStatus.INVALID
+        if num == str(PaymentStatus.FAILED.value):
+            return PaymentStatus.FAILED
+        if num == str(PaymentStatus.NOT_PAID.value):
+            return PaymentStatus.NOT_PAID
+
     def to_string(self):
         if self.value == self.SUCCESSFUL.value:
             return 'successful'
