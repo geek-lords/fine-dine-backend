@@ -10,6 +10,7 @@ from PIL import Image
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, request, send_from_directory
 from jwt import InvalidSignatureError
+# from urlvalidator import URLValidator
 
 from config import jwt_secret
 from db_utils import connection
@@ -581,3 +582,116 @@ def update_profile():
             return {"error": "User doesn't exists."}, ValidationError
     except KeyError:
         return {"error": "Invalid Credentials"}, ValidationError
+
+
+@admin.route("/get_menus", methods=['GET'])
+def get_menus():
+    """
+        Sample Input:
+            JWT Token for Admin (In Header),
+            {
+                "restaurant":id
+            }
+        Sample Output:
+            {
+            "menu": [
+                {
+                    "description": "Express Inn's Speciality. Main Course/Indian",
+                    "id": 1,
+                    "name": "Paneer Butter Masala",
+                    "photo_url": "paneerbuttermasala.jpg",
+                    "price": 480.00
+                },
+                {
+                    "description": "Express Inn's Speciality. Main Course/Indian",
+                    "id": 2,
+                    "name": "Kadhai Paneer",
+                    "photo_url": "paneer-kadhai.jpg",
+                    "price": 460.00
+                }
+                    ]
+            }
+    """
+    try:
+        if not request.json:
+            return {"error": "JSON Request is required."}, ValidationError
+        admin_id = authenticate(request)
+        if not admin_id:
+            return {"error": "User Authentication failed"}, ValidationError
+        restaurant_id = request.json['restaurant']
+        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
+            cur.execute("Select admin_id from restaurant where id = %s", restaurant_id)
+            if not cur.fetchone()['admin_id'] == admin_id:
+                return {"error": "The Restaurant and Admin Pair doesn't match."}, ValidationError
+            # Requested restaurant must'be admin'ed by requesting admin account.
+            cur.execute(
+                "Select id, name, description, photo_url ,price from menu where (restaurant_id = %s AND active_menu = 0) ",
+                restaurant_id)
+            menus = cur.fetchall()
+        return {"menu": menus}
+    except KeyError:
+        return {"error": "Missing Restaurant Id."}, ValidationError
+    except TypeError:
+        return {"error": "Invalid Information"}, ValidationError
+
+
+@admin.route("/new_menu", methods=["POST"])
+def new_menu():
+    try:
+        if not request.json:
+            return {"error": "JSON Data not found."}, ValidationError
+        admin_id = authenticate(request)
+        menu_desc = str(request.json["description"])
+        menu_photo = request.json["photo"]
+        menu_name = str(request.json["name"])
+        menu_price = str(request.json["price"])
+        restaurant_id = request.json["restaurant_id"]
+        if not admin_id:
+            return {"error": "User Authentication Failed."}, ValidationError
+        if len(menu_name) < 3 or len(menu_name) > 50:
+            return {"error", "Name of Food Item must'be of length between 3 and 50."}, ValidationError
+        if not menu_price.isdigit():
+            return {"error": "Price should be in digit."}, ValidationError
+        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
+            cur.execute("Select admin_id from restaurant where id = %s", restaurant_id)
+            if not cur.fetchone()['admin_id'] == admin_id:
+                return {"error": "Restaurant and Requesting Admin Pair doesn't exists."}, ValidationError
+            cur.execute(
+                "insert into menu(name, description, photo_url, restaurant_id, price) values (%s,%s,%s,%s,%s)",
+                (menu_name, menu_desc, menu_photo, restaurant_id, menu_price))
+            conn.commit()
+        return {'success': "New Menu Successfully added."}
+    except KeyError:
+        return {"error": "Important Information Missing "}, ValidationError
+    except TypeError:
+        return {"error": "Invalid Information"}, ValidationError
+
+
+@admin.route("/delete_menu", methods=["POST"])
+def delete_menu():
+    if not request.json:
+        return {"error": "JSON Data not found."}, ValidationError
+    admin_id = authenticate(request)
+    if not admin_id:
+        return {"error": "Authentication Failed"}, ValidationError
+    try:
+        menu_id = request.json['menu_id']
+        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
+            cur.execute(
+                "Select restaurant.admin_id from restaurant inner join menu on restaurant.id = menu.restaurant_id where menu.id = %s",
+                menu_id)
+            if not admin_id == cur.fetchone()['admin_id']:
+                return {"error": "Requesting Admin and Menu Pair doesn't exists."}, ValidationError
+            cur.execute(
+                "Select orders.table_name from orders inner join order_items on orders.id = order_items.order_id where (order_items.menu_id = %s and orders.payment_status <> 0)",
+                menu_id)
+            if cur.rowcount > 0:
+                return {
+                           "error": "Unable to Delete Item as Customers are still ordering it. Please try again later."}, ValidationError
+            cur.execute("update menu set active_menu = 1 where id = %s", menu_id)
+            conn.commit()
+            return {"success": "Successfully Deleted the Menu."}
+    except KeyError:
+        return {"error": "Some Fields Missing"}, ValidationError
+    except TypeError:
+        return {"error": "Invalid Request"}, ValidationError
