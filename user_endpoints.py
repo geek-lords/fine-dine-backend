@@ -350,7 +350,7 @@ def create_order():
             order_id = str(uuid4())
 
             cur.execute(
-                "insert into orders(id, user_id, table_name, restaurant_id, payment_status) "
+                "insert into orders(id, user_id, table_id, restaurant_id, payment_status) "
                 "values(%s, %s, %s, %s, %s)",
                 (order_id, user_id, table, restaurant_id, paytm.PaymentStatus.NOT_PAID.value),
             )
@@ -447,8 +447,11 @@ def checkout():
 def update_payment_status():
     """
     Updates transaction status for the given transaction id
-    url - /api/v1/update_payment_status?txn_id=<txn_id>
+    url - /api/v1/update_payment_status?txn_id=<txn_id>?status=<int>
     Headers - X-Auth-Token: <jwt>
+
+    status can be one of payment status described below
+
     Sample output -
     {
         "payment_status": <payment_status>
@@ -502,21 +505,12 @@ def update_payment_status():
                 and payment_status != paytm.PaymentStatus.PENDING.value:
             return {'success': payment_status == paytm.PaymentStatus.SUCCESSFUL.value}
 
-        # check if there are successful transactions against this order id
-        cur.execute(
-            'select id from transactions '
-            'where order_id = %s '
-            'and id != %s '
-            'and payment_status = %s',
-            (order_id, txn_id, paytm.PaymentStatus.SUCCESSFUL.value)
-        )
-
-        if cur.rowcount != 0:
-            print('Order has already been paid for')
-            return {'error': 'This order has already been paid for. '
-                             'Please cancel the transaction on your end'}, ValidationError
-
-        updated_payment_status = paytm.payment_status(txn_id)
+        status = request.args.get('status')
+        # cannot use "if not status" here because status of 0 will go to false
+        if status is not None:
+            updated_payment_status = paytm.PaymentStatus.parse(status)
+        else:
+            updated_payment_status = paytm.payment_status(txn_id)
 
         cur.execute(
             'update transactions set payment_status = %s where id = %s',
