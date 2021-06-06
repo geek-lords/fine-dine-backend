@@ -683,7 +683,6 @@ def new_menu():
 
 @admin.route("/delete_menu", methods=["POST"])
 def delete_menu():
-
     """
         Sample Input: UserID in Header
             {
@@ -720,3 +719,48 @@ def delete_menu():
         return {"error": "Some Fields Missing"}, ValidationError
     except TypeError:
         return {"error": "Invalid Request"}, ValidationError
+
+
+@admin.route("/order_history", methods=["GET"])
+def order_history():
+    try:
+        admin_id = authenticate(request)
+        if not admin_id:
+            return {"error": "User Authentication Failed."}, ValidationError
+        if not request.json:
+            return {'error': "JSON Data not Found."}, ValidationError
+        restaurant_id = request.json["restaurant_id"]
+        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as curr:
+            curr.execute("Select admin_id from restaurant where id=%s", restaurant_id)
+            if not admin_id == curr.fetchone()['admin_id']:
+                return {"error": "Requesting Admin and Menu Pair doesn't exists."}, ValidationError
+            curr.execute(
+                "Select orders.id, orders.price_excluding_tax, orders.tax, orders.time_and_date, users.name from orders join restaurant on orders.restaurant_id = restaurant.id join users on users.id = orders.user_id where (restaurant.id = %s and orders.payment_status = 0)",
+                restaurant_id)
+            return {"order_history": curr.fetchall()}
+    except KeyError:
+        return {"error": "Restaurant ID not found"}, ValidationError
+    except TypeError:
+        return {"error": "Invalid input"}, ValidationError
+
+
+@admin.route("/detailed_order/<order_id>")
+def detailed_order(order_id):
+    try:
+        admin_id = authenticate(request)
+        if not admin_id:
+            return {"error": "User Authentication Failed."}, ValidationError
+        with connection() as con, con.cursor(pymysql.cursors.DictCursor) as cur:
+            cur.execute(
+                "Select restaurant.admin_id from restaurant join orders on restaurant.id = orders.restaurant_id where orders.id =%s",
+                order_id)
+            if not admin_id == cur.fetchone()['admin_id']:
+                return {"error": "Unauthorized Request"}, ValidationError
+            cur.execute(
+                "select menu.name, order_items.quantity, order_items.price from menu join order_items where order_items.order_id = %s",
+                order_id)
+            return {"bill": cur.fetchall()}, 200
+    except KeyError:
+        return {"error": "Invalid Input"}, ValidationError
+    except TypeError:
+        return {"error": "Invalid Input"}, ValidationError
