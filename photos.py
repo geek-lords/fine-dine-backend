@@ -28,12 +28,12 @@ def get_photo():
             return {'error': 'No photo found'}
 
         row = cur.fetchone()
-        mime_type = 'images/' + row[0]
+        mime_type = row[0]
         data = row[1]
         return data, 200, {'Content-Type': mime_type}
 
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'svg'}
 
 
 def extension(filename):
@@ -43,6 +43,15 @@ def extension(filename):
 def allowed_file(filename):
     return '.' in filename and \
            extension(filename) in ALLOWED_EXTENSIONS
+
+
+def mime(extension):
+    # other than svg, all other supported extensions have their extension
+    # as images/<extension>
+    if extension != 'svg':
+        return 'images/' + extension
+
+    return 'images/svg+xml'
 
 
 @photos.route('/add', methods=['POST'])
@@ -79,7 +88,7 @@ def add_photo():
     with connection() as conn, conn.cursor() as cur:
         cur.execute(
             'insert into photos(mime_type, data) values (%s, %s)',
-            (ext, file.read())
+            (mime(ext), file.read())
         )
 
         cur.execute('select last_insert_id()')
