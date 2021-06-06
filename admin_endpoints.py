@@ -262,6 +262,8 @@ def add_restaurant():
         return {"error": "No JSON Data found."}, ValidationError
     try:
         admin_id = authenticate(request)
+        if not admin_id:
+            return {"error": "User Authentication Failed."}, ValidationError
         name = request.json['name']
         description = request.json['description']
         photo_url = request.json['photo_url']
@@ -273,7 +275,7 @@ def add_restaurant():
         if len(name) < 3 or len(name) > 60:
             return {"error": "Restaurant Name length should be between 3 to 60 letters."}
         try:
-            request.get(str(photo_url))
+            requests.get(str(photo_url))
         except requests.ConnectionError:
             return {"error": "Photo URL doesn't exist on Internet."}
         try:
@@ -293,7 +295,8 @@ def add_restaurant():
         return {'restaurant_id': restaurant_id}
     except KeyError:
         return {"error": "Some Credentials are missing."}, ValidationError
-
+    except TypeError:
+        return {"error": "Invalid Input"}, ValidationError
 
 @admin.route('/create_table', methods=['POST'])
 def create_table():
