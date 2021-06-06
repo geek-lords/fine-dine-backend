@@ -237,7 +237,7 @@ def get_restaurant():
         return {"restaurant_details": cur.fetchall()}
 
 
-@admin.route("/add_restaurant", methods=['GET'])
+@admin.route("/add_restaurant", methods=['POST'])
 def add_restaurant():
     """
         Sample Input :
