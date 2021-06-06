@@ -205,29 +205,27 @@ def get_restaurant():
     """
         Sample Output:
             {
-                "restaurant details": {
                     "restaurant details": [
                         {
-                                "address": "Pathardi Phata, Mumbai Agra Road, Ambad, Nashik, Maharashtra, India",
-                                "id": "1",
-                                "name": "Express Inn",
-                                "photo_url": "https://www.travelandleisureindia.in/wp-content/uploads/2019/12/Express-inn-feature-2.jpg"
-                            },
-                            {
-                                "address": "Pathardi Phata, Mumbai Agra Road, Ambad, Nashik, Maharashtra, India",
-                                "id": "2",
-                                "name": "The Gateway Taj - Nashik",
-                                "photo_url": "https://i1.wp.com/delectablereveries.com/wp-content/uploads/2017/08/20986518_10155435243471183_707459594_n.jpg?fit=960%2C639&ssl=1"
-                            },
-                            {
-                                "address": "2014 Forest Hills Drive, Frieghville, North Carolina, USA",
-                                "id": "4a890455-0e70-4345-8aa9-fd2cc40d5d8f",
-                                "name": "Youngsimba's Den",
-                                "photo_url": "https://ratcreek.org/wp-content/uploads/2018/07/IMG-1-NewAveBusinessesLaunch-AydanDunniganVickruck-1536x1024.jpg"
-                            }
-                        ]
+                            "address": "Pathardi Phata, Mumbai Agra Road, Ambad, Nashik, Maharashtra, India",
+                            "id": "1",
+                            "name": "Express Inn",
+                            "photo_url": "https://www.travelandleisureindia.in/wp-content/uploads/2019/12/Express-inn-feature-2.jpg"
+                        },
+                        {
+                            "address": "Pathardi Phata, Mumbai Agra Road, Ambad, Nashik, Maharashtra, India",
+                            "id": "2",
+                            "name": "The Gateway Taj - Nashik",
+                            "photo_url": "https://i1.wp.com/delectablereveries.com/wp-content/uploads/2017/08/20986518_10155435243471183_707459594_n.jpg?fit=960%2C639&ssl=1"
+                        },
+                        {
+                            "address": "2014 Forest Hills Drive, Frieghville, North Carolina, USA",
+                            "id": "4a890455-0e70-4345-8aa9-fd2cc40d5d8f",
+                            "name": "Youngsimba's Den",
+                            "photo_url": "https://ratcreek.org/wp-content/uploads/2018/07/IMG-1-NewAveBusinessesLaunch-AydanDunniganVickruck-1536x1024.jpg"
                         }
-                    }
+                    ]
+            }
     """
     admin_id = authenticate(request)
 
@@ -236,7 +234,7 @@ def get_restaurant():
 
     with connection() as con, con.cursor(pymysql.cursors.DictCursor) as cur:
         cur.execute("Select id,name,photo_url,address from restaurant where admin_id = %s", admin_id)
-        return {"restaurant details": cur.fetchall()}
+        return {"restaurant_details": cur.fetchall()}
 
 
 @admin.route("/add_restaurant", methods=['GET'])
