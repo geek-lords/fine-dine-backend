@@ -61,38 +61,41 @@ def generate_code():
     restaurant_id = request.args.get('restaurant_id')
     table = request.args.get('table')
 
-    # if restaurant_id is None or table is None:
-    #     return {'error': "Incorrect/Invalid Arguments."}, ValidationError
-    # with connection() as conn, conn.cursor() as cur:
-    #     cur.execute("Select name from restaurant where id = %s && admin_id = %s", (restaurant_id, admin_id,))
-    #     if cur.rowcount == 0:
-    #         return {'error': "Restaurant and Admin Pair doesn't exists."}
-    #     cur.execute("Select * from tables where restaurant_id = %s && id = %s", (restaurant_id, table))
-    #     if cur.rowcount == 0:
-    #         return {'error': "Restaurant and Table Pair doesn't exists."}
+    if restaurant_id is None or table is None:
+        return {'error': "Incorrect/Invalid Arguments."}, ValidationError
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute("Select name from restaurant where id = %s", (restaurant_id,))
+        if cur.rowcount == 0:
+            return {'error': "Restaurant and Admin Pair doesn't exists."}
 
-    params = {'restaurant_id': restaurant_id, 'table': table}
-    qr = qrcode.QRCode(
-        version=5,
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=15,
-        border=4,
-    )
-    qr.add_data(json.dumps(params))
-    qr.make(fit=True)
-    image = qr.make_image(fill_color="black", back_color="white")
+        name = cur.fetchone()[0]
 
-    logo_display = Image.open('statics/qr/Geek-Lords.jpeg')
-    logo_display.thumbnail((120, 120))
-    logo_pos = ((image.size[0] - logo_display.size[0]) // 2, (image.size[1] - logo_display.size[1]) // 2)
-    image.paste(logo_display, logo_pos)
+        cur.execute("Select * from tables where restaurant_id = %s and id = %s", (restaurant_id, table))
+        if cur.rowcount == 0:
+            return {'error': "Restaurant and Table Pair doesn't exists."}
 
-    # if two people request qr code at almost same time, using the
-    # same file will corrupt at least one response
-    filename = f'{restaurant_id}-{table}-{uuid4()}.png'
-    image.save('statics/qr/' + filename)
-    with open('statics/qr/' + filename, 'rb') as f:
-        return f.read(), 200, {'Content-Type': 'image/png', 'Content-Disposition': 'attachment; filename=qr.png'}
+        params = {'restaurant_id': restaurant_id, 'table': table}
+        qr = qrcode.QRCode(
+            version=5,
+            error_correction=qrcode.constants.ERROR_CORRECT_H,
+            box_size=15,
+            border=4,
+        )
+        qr.add_data(json.dumps(params))
+        qr.make(fit=True)
+        image = qr.make_image(fill_color="black", back_color="white")
+
+        logo_display = Image.open('statics/qr/Geek-Lords.jpeg')
+        logo_display.thumbnail((120, 120))
+        logo_pos = ((image.size[0] - logo_display.size[0]) // 2, (image.size[1] - logo_display.size[1]) // 2)
+        image.paste(logo_display, logo_pos)
+
+        # if two people request qr code at almost same time, using the
+        # same file will corrupt at least one response
+        filename = f'{restaurant_id}-{table}-{uuid4()}.png'
+        image.save('statics/qr/' + filename)
+        with open('statics/qr/' + filename, 'rb') as f:
+            return f.read(), 200, {'Content-Type': 'image/png', 'Content-Disposition': f'attachment; filename={name}.png'}
 
 
 @admin.route("/create_admin", methods=['POST'])
