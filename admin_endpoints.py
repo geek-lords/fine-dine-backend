@@ -91,7 +91,8 @@ def generate_code():
     # same file will corrupt at least one response
     filename = f'{restaurant_id}-{table}-{uuid4()}.png'
     image.save('statics/qr/' + filename)
-    return send_from_directory('statics/qr', filename=filename, mimetype='image/png')
+    with open('statics/qr/' + filename, 'rb') as f:
+        return f.read(), 200, {'Content-Type': 'image/png'}
 
 
 @admin.route("/create_admin", methods=['POST'])
