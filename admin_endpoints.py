@@ -591,7 +591,7 @@ def update_profile():
         return {"error": "Invalid Credentials"}, ValidationError
 
 
-@admin.route("/get_menus", methods=['POST'])
+@admin.route("/get_menus", methods=['GET'])
 def get_menus():
     """
         header: X-Auth-Token: <jwt>
