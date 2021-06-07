@@ -6,3 +6,4 @@
 # directory. But this gitignore is not ignored. qr directory is not
 # ignored because it has the .gitignore file
 *
+!Geek-Lords.jpeg
