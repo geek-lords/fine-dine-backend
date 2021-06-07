@@ -92,7 +92,7 @@ def generate_code():
     filename = f'{restaurant_id}-{table}-{uuid4()}.png'
     image.save('statics/qr/' + filename)
     with open('statics/qr/' + filename, 'rb') as f:
-        return f.read(), 200, {'Content-Type': 'image/png', 'Content-Disposition': 'attachment'}
+        return f.read(), 200, {'Content-Type': 'image/png', 'Content-Disposition': 'attachment; filename=qr.png'}
 
 
 @admin.route("/create_admin", methods=['POST'])
