@@ -64,15 +64,11 @@ def generate_code():
     if restaurant_id is None or table is None:
         return {'error': "Incorrect/Invalid Arguments."}, ValidationError
     with connection() as conn, conn.cursor() as cur:
-        cur.execute("Select name from restaurant where id = %s", (restaurant_id,))
-        if cur.rowcount == 0:
-            return {'error': "Restaurant and Admin Pair doesn't exists."}
-
-        name = cur.fetchone()[0]
-
-        cur.execute("Select * from tables where restaurant_id = %s and id = %s", (restaurant_id, table))
+        cur.execute("Select name from tables where restaurant_id = %s and id = %s", (restaurant_id, table))
         if cur.rowcount == 0:
             return {'error': "Restaurant and Table Pair doesn't exists."}
+
+        name = cur.fetchone()[0]
 
         params = {'restaurant_id': restaurant_id, 'table': table}
         qr = qrcode.QRCode(
