@@ -637,6 +637,8 @@ def get_menus():
                 restaurant_id
             )
             menus = cur.fetchall()
+            for menu in menus:
+                menu['price'] = float(menu['price'])
         return {"menu": menus}
     except KeyError:
         print('missing restaurant id')
@@ -684,6 +686,8 @@ def new_menu():
             cur.execute(
                 "insert into menu(name, description, photo_url, restaurant_id, price) values (%s,%s,%s,%s,%s)",
                 (menu_name, menu_desc, menu_photo, restaurant_id, menu_price))
+            cur.execute('select last_inserted_id()')
+            menu_id = cur.fetchone()['']
             conn.commit()
         return {'success': "New Menu Successfully added."}
     except KeyError:
