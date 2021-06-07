@@ -594,11 +594,9 @@ def update_profile():
 @admin.route("/get_menus", methods=['GET'])
 def get_menus():
     """
-        Sample Input:
-            JWT Token for Admin (In Header),
-            {
-                "restaurant":id
-            }
+        header: X-Auth-Token: <jwt>
+        url - /api/v1/admin/get_menus?restaurant_id=<id>
+
         Sample Output:
             {
             "menu": [
@@ -620,25 +618,31 @@ def get_menus():
             }
     """
     try:
-        if not request.json:
-            return {"error": "JSON Request is required."}, ValidationError
         admin_id = authenticate(request)
         if not admin_id:
+            print('Authentication failed')
             return {"error": "User Authentication failed"}, ValidationError
-        restaurant_id = request.json['restaurant']
+
+        restaurant_id = request.args['restaurant_id']
+
         with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute("Select admin_id from restaurant where id = %s", restaurant_id)
-            if not cur.fetchone()['admin_id'] == admin_id:
-                return {"error": "The Restaurant and Admin Pair doesn't match."}, ValidationError
-            # Requested restaurant must'be admin'ed by requesting admin account.
+            if cur.rowcount == 0 or cur.fetchone()['admin_id'] != admin_id:
+                print('Authorization failed')
+                return {"error": "Authorization failed"}, ValidationError
+
             cur.execute(
-                "Select id, name, description, photo_url ,price from menu where (restaurant_id = %s AND active_menu = 0) ",
-                restaurant_id)
+                "Select id, name, description, photo_url ,price from menu "
+                "where (restaurant_id = %s AND active_menu = 0)",
+                restaurant_id
+            )
             menus = cur.fetchall()
         return {"menu": menus}
     except KeyError:
+        print('missing restaurant id')
         return {"error": "Missing Restaurant Id."}, ValidationError
-    except TypeError:
+    except TypeError as e:
+        print(e)
         return {"error": "Invalid Information"}, ValidationError
 
 
