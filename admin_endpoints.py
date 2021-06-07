@@ -840,7 +840,7 @@ def recent_orders():
             if cur.fetchone()['admin_id'] != admin_id:
                 return {"error": "Unauthorised Request."}, ValidationError
             cur.execute(
-                "Select new_orders.quantity,table.name, orders.payment_status, orders.time_and_date, users.name, menu.name from new_orders join orders on new_orders.order_id = orders.id join users on users.id = orders.user_id join menu on menu.id = new_orders.menu_id join tables on orders.table_id =  tables.id where (new_orders.delivered_items = 0  and orders.restaurant_id = %s and orders.time_and_date > DATE_SUB(CURDATE(), INTERVAL 1 DAY)) order by orders.time_and_date asc",
+                "Select new_orders.quantity,tables.name, orders.payment_status, orders.time_and_date, users.name, menu.name from new_orders join orders on new_orders.order_id = orders.id join users on users.id = orders.user_id join menu on menu.id = new_orders.menu_id join tables on orders.table_id =  tables.id where (new_orders.delivered_items = 0  and orders.restaurant_id = %s and orders.time_and_date > DATE_SUB(CURDATE(), INTERVAL 1 DAY)) order by orders.time_and_date asc",
                 restaurant_id)
             return {"recent_orders": cur.fetchall()}
     except TypeError:
