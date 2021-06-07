@@ -714,7 +714,7 @@ def delete_menu():
             if not admin_id == cur.fetchone()['admin_id']:
                 return {"error": "Requesting Admin and Menu Pair doesn't exists."}, ValidationError
             cur.execute(
-                "Select orders.table_name from orders inner join order_items on orders.id = order_items.order_id where (order_items.menu_id = %s and orders.payment_status <> 0)",
+                "Select orders.table_id from orders inner join order_items on orders.id = order_items.order_id where (order_items.menu_id = %s and orders.payment_status <> 0)",
                 menu_id)
             if cur.rowcount > 0:
                 return {
@@ -792,7 +792,7 @@ def new_orders():
             if cur.fetchone()['admin_id'] != admin_id:
                 return {"error": "Unauthorized Request."}, ValidationError
             cur.execute(
-                "Select new_orders.id, menu.name, menu.description, new_orders.quantity, orders.table_name, users.name from new_orders join menu on new_orders.menu_id = menu.id join orders on orders.id = new_orders.order_id join users on orders.user_id = users.id where (orders.restaurant_id = %s and new_orders.delivered_items = 1) order by orders.time_and_date asc",
+                "Select new_orders.id, menu.name, menu.description, new_orders.quantity, orders.table_id, users.name from new_orders join menu on new_orders.menu_id = menu.id join orders on orders.id = new_orders.order_id join users on orders.user_id = users.id where (orders.restaurant_id = %s and new_orders.delivered_items = 1) order by orders.time_and_date asc",
                 restaurant_id)
             yet_to_deliver = cur.fetchall()
             return {"new_orders": yet_to_deliver}
