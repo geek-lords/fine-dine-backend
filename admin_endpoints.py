@@ -18,7 +18,7 @@ from db_utils import connection
 admin = Blueprint('admin', __name__)
 
 # HTTP Errors
-ValidationError = 401
+ValidationError = 200
 
 MinPasswordLength = 5
 

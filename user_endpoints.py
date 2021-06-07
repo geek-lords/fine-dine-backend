@@ -36,7 +36,7 @@ user = Blueprint('user', __name__)
 # scheduler.start()
 
 # HTTP error code for validation error
-ValidationError = 401
+ValidationError = 200
 
 MaxPasswordLength = 70
 
@@ -350,7 +350,7 @@ def create_order():
             order_id = str(uuid4())
 
             cur.execute(
-                "insert into orders(id, user_id, table_name, restaurant_id, payment_status) "
+                "insert into orders(id, user_id, table_id, restaurant_id, payment_status) "
                 "values(%s, %s, %s, %s, %s)",
                 (order_id, user_id, table, restaurant_id, paytm.PaymentStatus.NOT_PAID.value),
             )
