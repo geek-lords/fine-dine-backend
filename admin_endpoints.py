@@ -656,7 +656,7 @@ def new_menu():
             "name":"Name",
             "description":"Desc",
             "photo":"Photo.jpeg",
-            "price":20.0,
+            "price":20,
             "restaurant_id":"ID"
         }
         Sample Output:
@@ -686,10 +686,11 @@ def new_menu():
             cur.execute(
                 "insert into menu(name, description, photo_url, restaurant_id, price) values (%s,%s,%s,%s,%s)",
                 (menu_name, menu_desc, menu_photo, restaurant_id, menu_price))
-            cur.execute('select last_inserted_id()')
-            menu_id = cur.fetchone()['']
+            cur.execute('select last_insert_id()')
+            row = cur.fetchone()
+            menu_id = row['last_insert_id()']
             conn.commit()
-        return {'success': "New Menu Successfully added."}
+        return {'success': "New Menu Successfully added.", 'menu_id': menu_id}
     except KeyError:
         return {"error": "Important Information Missing "}, ValidationError
     except TypeError:
