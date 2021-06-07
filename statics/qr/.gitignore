@@ -5,4 +5,3 @@
 # So I added a gitigore with * which means ignore everything in this
 # directory. But this gitignore is not ignored. qr directory is not
 # ignored because it has the .gitignore file
-*
