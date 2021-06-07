@@ -350,7 +350,7 @@ def create_order():
             order_id = str(uuid4())
 
             cur.execute(
-                "insert into orders(id, user_id, table_id, restaurant_id, payment_status) "
+                "insert into orders(id, user_id, table_name, restaurant_id, payment_status) "
                 "values(%s, %s, %s, %s, %s)",
                 (order_id, user_id, table, restaurant_id, paytm.PaymentStatus.NOT_PAID.value),
             )
@@ -656,10 +656,13 @@ def order_items():
                     (order.order_id, order.menu_id, order.quantity,
                      order.price, order.quantity, order.price)
                 )
+                cur.execute("insert into new_orders(id, order_id, menu_id, quantity) values(%s,%s,%s,%s)",
+                            (uuid4(), order.order_id, order.menu_id, order.quantity))
             price_excluding_tax = sum(map(lambda o: o.price, all_orders))
 
             cur.execute("update orders set price_excluding_tax = price_excluding_tax + %s where id = %s",
                         (price_excluding_tax, order_id))
+
             conn.commit()
 
         return {"success": True}

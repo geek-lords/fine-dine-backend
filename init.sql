@@ -82,3 +82,9 @@ create table admin
     contact_number varchar(15) unique  not null,
     password       varchar(100)        not null
 );
+
+create table new_orders(
+    id varchar(36) primary key,
+    order_id varchar(36) not null,
+    menu_id varchar(36) not null,
+    quantity int(2) not null);

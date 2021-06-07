@@ -273,19 +273,20 @@ def add_restaurant():
 
         # Validations
         if len(name) < 3 or len(name) > 60:
-            return {"error": "Restaurant Name length should be between 3 to 60 letters."}
+            return {"error": "Restaurant Name length should be between 3 to 60 letters."}, ValidationError
         try:
             requests.get(str(photo_url))
         except requests.ConnectionError:
-            return {"error": "Photo URL doesn't exist on Internet."}
+            return {"error": "Photo URL doesn't exist on Internet."}, ValidationError
         try:
             isinstance(float(tax_percentage), float)
+        #     Also check if zero
         except ValueError:
             return {"error": "Tax Amounts can't contain any letter or Special Symbols."}
         if len(address) < 10 or len(address) > 100:
-            return {"error": "Address is too short. (Minimum 10 Letters) "}
+            return {"error": "Address is too short. (Minimum 10 Letters) "}, ValidationError
         if len(pincode) != 6 or not pincode.isdigit():
-            return {"error": "Invalid Pincode."}
+            return {"error": "Invalid Pincode."}, ValidationError
         with connection() as conn, conn.cursor() as cur:
             restaurant_id = uuid4()
             cur.execute(
@@ -297,6 +298,7 @@ def add_restaurant():
         return {"error": "Some Credentials are missing."}, ValidationError
     except TypeError:
         return {"error": "Invalid Input"}, ValidationError
+
 
 @admin.route('/create_table', methods=['POST'])
 def create_table():
@@ -749,23 +751,99 @@ def order_history():
         return {"error": "Invalid input"}, ValidationError
 
 
-@admin.route("/detailed_order/<order_id>")
+@admin.route("/detailed_order/<order_id>", )
 def detailed_order(order_id):
     try:
         admin_id = authenticate(request)
         if not admin_id:
             return {"error": "User Authentication Failed."}, ValidationError
-        with connection() as con, con.cursor(pymysql.cursors.DictCursor) as cur:
+        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute(
-                "Select restaurant.admin_id from restaurant join orders on restaurant.id = orders.restaurant_id where orders.id =%s",
+                "Select restaurant.admin_id from restaurant join orders on restaurant.id = orders.restaurant_id where orders.id = %s ",
                 order_id)
-            if not admin_id == cur.fetchone()['admin_id']:
+            if admin_id != cur.fetchone()['admin_id']:
                 return {"error": "Unauthorized Request"}, ValidationError
             cur.execute(
-                "select menu.name, order_items.quantity, order_items.price from menu join order_items where order_items.order_id = %s",
+                "Select users.name, orders.time_and_date,orders.price_excluding_tax, orders.tax from users join orders on orders.user_id = users.id where orders.id = %s",
                 order_id)
-            return {"bill": cur.fetchall()}, 200
+            overall_information = cur.fetchone()
+            cur.execute(
+                "Select menu.name, menu.price, order_items.quantity from menu join order_items on menu.id = order_items.menu_id where order_items.order_id = %s ",
+                order_id)
+            detailed_bill = cur.fetchall()
+            return {"details": {"overall_information": overall_information, "bill": detailed_bill}}
     except KeyError:
         return {"error": "Invalid Input"}, ValidationError
     except TypeError:
+        return {"error": "Invalid Request for Order Details."}, ValidationError
+
+
+@admin.route("/new_orders", methods=["GET"])
+def new_orders():
+    try:
+        admin_id = authenticate(request)
+        if not admin_id:
+            return {"error": "User Authentication Failed"}, ValidationError
+        if not request.json:
+            return {"error": "JSON Data not found."}, ValidationError
+        restaurant_id = request.json["restaurant_id"]
+        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
+            cur.execute("Select admin_id from restaurant where id = %s", restaurant_id)
+            if cur.fetchone()['admin_id'] != admin_id:
+                return {"error": "Unauthorized Request."}, ValidationError
+            cur.execute(
+                "Select new_orders.id, menu.name, menu.description, new_orders.quantity, orders.table_name, users.name from new_orders join menu on new_orders.menu_id = menu.id join orders on orders.id = new_orders.order_id join users on orders.user_id = users.id where (orders.restaurant_id = %s and new_orders.delivered_items = 1) order by orders.time_and_date asc",
+                restaurant_id)
+            yet_to_deliver = cur.fetchall()
+            return {"new_orders": yet_to_deliver}
+    except KeyError:
+        return {"error": "Important Data is missing."}, ValidationError
+    except TypeError:
+        return {"error": "Invalid Inputs."}, ValidationError
+
+
+@admin.route("/delivered/<id>", methods=["POST"])
+def delivered_menu(id):
+    try:
+        admin_id = authenticate(request)
+        restaurant_id = request.json['restaurant_id']
+        if not request.json:
+            return {"error": "JSON Data is missing"}, ValidationError
+        if not admin:
+            return {"error": "Admin Authentication Failed."}, ValidationError
+        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
+            cur.execute(
+                "Select admin_id from restaurant where id = %s",
+                restaurant_id)
+            if admin_id != cur.fetchone()['admin_id']:
+                return {"error": "Unauthorized Request."}, ValidationError
+            cur.execute("update new_orders set delivered_items = 0 where id = %s", id)
+            conn.commit()
+            return {"success": "Successfully Delivered Requested Item"}, 200
+    except TypeError:
+        return {"error", "Invalid Inputs"}, ValidationError
+    except KeyError:
+        return {"error": "JSON Data missing."}, ValidationError
+
+
+@admin.route("/recent_orders", methods=["POST"])
+def recent_orders():
+    try:
+        admin_id = authenticate(request)
+        if not request.json:
+            return {"error", "JSON Data is missing."}, ValidationError
+        if not admin_id:
+            return {"error": "Admin Authentication Failed."}, ValidationError
+        restaurant_id = request.json['restaurant_id']
+        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
+            cur.execute("Select admin_id from restaurant where id = %s", restaurant_id)
+            if cur.fetchone()['admin_id'] != admin_id:
+                return {"error": "Unauthorised Request."}, ValidationError
+            cur.execute(
+                "Select new_orders.quantity,orders.table_name, orders.payment_status, orders.time_and_date, users.name, menu.name from new_orders join orders on new_orders.order_id = orders.id join users on users.id = orders.user_id join menu on menu.id = new_orders.menu_id where (new_orders.delivered_items = 0  and orders.restaurant_id = %s and orders.time_and_date > DATE_SUB(CURDATE(), INTERVAL 1 DAY)) order by orders.time_and_date asc",
+                restaurant_id)
+            return {"recent_orders": cur.fetchall()}
+    except TypeError:
         return {"error": "Invalid Input"}, ValidationError
+    except KeyError:
+        return {"error": "Required JSON Data Missing"}, ValidationError
