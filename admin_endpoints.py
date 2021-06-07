@@ -82,10 +82,10 @@ def generate_code():
     qr.make(fit=True)
     image = qr.make_image(fill_color="black", back_color="white")
 
-    # logo_display = Image.open('statics/qr/Geek-Lords.jpeg')
-    # logo_display.thumbnail((120, 120))
-    # logo_pos = ((image.size[0] - logo_display.size[0]) // 2, (image.size[1] - logo_display.size[1]) // 2)
-    # image.paste(logo_display, logo_pos)
+    logo_display = Image.open('statics/qr/Geek-Lords.jpeg')
+    logo_display.thumbnail((120, 120))
+    logo_pos = ((image.size[0] - logo_display.size[0]) // 2, (image.size[1] - logo_display.size[1]) // 2)
+    image.paste(logo_display, logo_pos)
 
     # if two people request qr code at almost same time, using the
     # same file will corrupt at least one response
