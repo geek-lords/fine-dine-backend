@@ -82,17 +82,17 @@ def generate_code():
     qr.make(fit=True)
     image = qr.make_image(fill_color="black", back_color="white")
 
-    # logo_display = Image.open('statics/qr/Geek-Lords.jpeg')
-    # logo_display.thumbnail((120, 120))
-    # logo_pos = ((image.size[0] - logo_display.size[0]) // 2, (image.size[1] - logo_display.size[1]) // 2)
-    # image.paste(logo_display, logo_pos)
+    logo_display = Image.open('statics/qr/Geek-Lords.jpeg')
+    logo_display.thumbnail((120, 120))
+    logo_pos = ((image.size[0] - logo_display.size[0]) // 2, (image.size[1] - logo_display.size[1]) // 2)
+    image.paste(logo_display, logo_pos)
 
     # if two people request qr code at almost same time, using the
     # same file will corrupt at least one response
     filename = f'{restaurant_id}-{table}-{uuid4()}.png'
     image.save('statics/qr/' + filename)
     with open('statics/qr/' + filename, 'rb') as f:
-        return f.read(), 200, {'Content-Type': 'image/png'}
+        return f.read(), 200, {'Content-Type': 'image/png', 'Content-Disposition': 'attachment'}
 
 
 @admin.route("/create_admin", methods=['POST'])
