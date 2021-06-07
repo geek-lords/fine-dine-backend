@@ -357,6 +357,8 @@ def create_table():
         cur.execute('select last_insert_id()')
         table_id = cur.fetchone()[0]
 
+        conn.commit()
+
         return {'table_id': table_id}
 
 
