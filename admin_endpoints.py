@@ -54,22 +54,22 @@ def authenticate(_requests):
 
 @admin.route("/code", methods=['GET'])
 def generate_code():
-    admin_id = authenticate(request)
-    if not admin_id:
-        return {'error': 'Authentication Failure'}, ValidationError
+    # admin_id = authenticate(request)
+    # if not admin_id:
+    #     return {'error': 'Authentication Failure'}, ValidationError
 
     restaurant_id = request.args.get('restaurant_id')
     table = request.args.get('table')
 
-    if restaurant_id is None or table is None:
-        return {'error': "Incorrect/Invalid Arguments."}, ValidationError
-    with connection() as conn, conn.cursor() as cur:
-        cur.execute("Select name from restaurant where id = %s && admin_id = %s", (restaurant_id, admin_id,))
-        if cur.rowcount == 0:
-            return {'error': "Restaurant and Admin Pair doesn't exists."}
-        cur.execute("Select * from tables where restaurant_id = %s && id = %s", (restaurant_id, table))
-        if cur.rowcount == 0:
-            return {'error': "Restaurant and Table Pair doesn't exists."}
+    # if restaurant_id is None or table is None:
+    #     return {'error': "Incorrect/Invalid Arguments."}, ValidationError
+    # with connection() as conn, conn.cursor() as cur:
+    #     cur.execute("Select name from restaurant where id = %s && admin_id = %s", (restaurant_id, admin_id,))
+    #     if cur.rowcount == 0:
+    #         return {'error': "Restaurant and Admin Pair doesn't exists."}
+    #     cur.execute("Select * from tables where restaurant_id = %s && id = %s", (restaurant_id, table))
+    #     if cur.rowcount == 0:
+    #         return {'error': "Restaurant and Table Pair doesn't exists."}
 
     params = {'restaurant_id': restaurant_id, 'table': table}
     qr = qrcode.QRCode(
@@ -82,10 +82,10 @@ def generate_code():
     qr.make(fit=True)
     image = qr.make_image(fill_color="black", back_color="white")
 
-    logo_display = Image.open('statics/qr/Geek-Lords.jpeg')
-    logo_display.thumbnail((120, 120))
-    logo_pos = ((image.size[0] - logo_display.size[0]) // 2, (image.size[1] - logo_display.size[1]) // 2)
-    image.paste(logo_display, logo_pos)
+    # logo_display = Image.open('statics/qr/Geek-Lords.jpeg')
+    # logo_display.thumbnail((120, 120))
+    # logo_pos = ((image.size[0] - logo_display.size[0]) // 2, (image.size[1] - logo_display.size[1]) // 2)
+    # image.paste(logo_display, logo_pos)
 
     # if two people request qr code at almost same time, using the
     # same file will corrupt at least one response
