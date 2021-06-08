@@ -860,13 +860,28 @@ def detailed_order(order_id):
 def new_orders():
     """
     (Admin Authenticated)
-    Sample Input: {
+    Sample Input:
+    {
         "restaurant_id" : 1
     }
-    Sample Output: {
-        "new_orders: [
-            <list>
-        ]
+    Sample Output:
+    {
+        "new_orders": {
+            "table 1": {
+                "orders": [
+                    {
+                        "description": "delicious salad",
+                        "id": "0252dbf9-b4c1-4dab-9141-01aa62521e7b",
+                        "name": "Salad",
+                        "quantity": "1",
+                        "table_id": 1,
+                        "tables.name": "table 1",
+                        "users.name": "Abhiraj Kale"
+                    }
+                ],
+                "users.name": "Abhiraj Kale"
+            }
+        }
     }
     """
     try:
@@ -879,12 +894,31 @@ def new_orders():
             if cur.fetchone()['admin_id'] != admin_id:
                 return {"error": "Unauthorized Request."}, ValidationError
             cur.execute(
-                "Select new_orders.id, menu.name, menu.description, new_orders.quantity, orders.table_id, users.name from new_orders join menu on new_orders.menu_id = menu.id join orders on orders.id = new_orders.order_id join users on orders.user_id = users.id where (orders.restaurant_id = %s and new_orders.delivered_items = 1) order by orders.time_and_date asc",
-                restaurant_id)
+                "Select new_orders.id, menu.name, menu.description, new_orders.quantity, orders.table_id, users.name, tables.name "
+                "from new_orders "
+                "join menu on new_orders.menu_id = menu.id "
+                "join orders on orders.id = new_orders.order_id "
+                "join tables on tables.id = orders.table_id "
+                "join users on orders.user_id = users.id "
+                "where orders.restaurant_id = %s and new_orders.delivered_items = 1 "
+                "order by orders.time_and_date",
+                restaurant_id
+            )
             yet_to_deliver = cur.fetchall()
             for ytd in yet_to_deliver:
                 ytd["quantity"] = str(ytd["quantity"])
-            return {"new_orders": yet_to_deliver}
+
+            table_wise_orders = {}
+
+            for order in yet_to_deliver:
+                orders_by_table = table_wise_orders.get(order['tables.name'], {})
+                orders = orders_by_table.get('orders', [])
+                orders.append(order)
+                orders_by_table['orders'] = orders
+                orders_by_table['users.name'] = order['users.name']
+                table_wise_orders[order['tables.name']] = orders_by_table
+
+            return {"new_orders": table_wise_orders}
     except KeyError:
         return {"error": "Important Data is missing."}, ValidationError
     except TypeError:
@@ -936,25 +970,20 @@ def recent_orders():
             }
         Sample Output:
         {
-            {
-                "recent_orders": [
-                {
-                "menu.name": "Kadhai Paneer",
-                "name": "Sarvesh Joshi",
-                "payment_status": "4",
-                "quantity": "3",
-                "tables.name": "A",
-                "time_and_date": "Sun, 06 Jun 2021 22:17:58 GMT"
-                },
-                {
-                    "menu.name": "Tandoori Roti Bucket",
-                    "name": "Sarvesh Joshi",
-                    "payment_status": "4",
-                    "quantity": "2",
-                    "tables.name": "A",
-                    "time_and_date": "Sun, 06 Jun 2021 22:17:58 GMT"
+            "recent_orders": {
+                "table 1": {
+                    "name": "Abhiraj Kale",
+                    "orders": [
+                        {
+                            "menu.name": "Salad",
+                            "name": "Abhiraj Kale",
+                            "payment_status": "4",
+                            "quantity": "1",
+                            "tables.name": "table 1",
+                            "time_and_date": "Tue, 08 Jun 2021 08:13:10 GMT"
+                        }
+                    ]
                 }
-                ]
             }
         }
 
@@ -971,14 +1000,34 @@ def recent_orders():
             if cur.fetchone()['admin_id'] != admin_id:
                 return {"error": "Unauthorised Request."}, ValidationError
             cur.execute(
-                "select users.name ,new_orders.quantity, menu.name, orders.payment_status, orders.time_and_date, tables.name from new_orders join menu on new_orders.menu_id = menu.id join orders on orders.id = new_orders.order_id join tables on tables.id = orders.table_id join users on users.id = orders.user_id where(orders.restaurant_id = %s and orders.time_and_date > DATE_SUB(CURDATE(), INTERVAL 1 DAY) and new_orders.delivered_items = 0) order by orders.time_and_date asc",
-                restaurant_id)
+                "select users.name ,new_orders.quantity, menu.name, orders.payment_status, orders.time_and_date, tables.name "
+                "from new_orders "
+                "join menu on new_orders.menu_id = menu.id "
+                "join orders on orders.id = new_orders.order_id "
+                "join tables on tables.id = orders.table_id "
+                "join users on users.id = orders.user_id "
+                "where orders.restaurant_id = %s "
+                "and orders.time_and_date > DATE_SUB(CURDATE(), INTERVAL 1 DAY) "
+                "and new_orders.delivered_items = 0 "
+                "order by orders.time_and_date",
+                restaurant_id
+            )
             recent_order = cur.fetchall()
             for ro in recent_order:
                 ro["quantity"] = str(ro["quantity"])
                 ro["payment_status"] = str(ro["payment_status"])
 
-            return {"recent_orders": recent_order}
+            table_wise_orders = {}
+
+            for ro in recent_order:
+                orders_by_table = table_wise_orders.get(ro['tables.name'], {})
+                orders = orders_by_table.get('orders', [])
+                orders.append(ro)
+                orders_by_table['orders'] = orders
+                orders_by_table['name'] = ro['name']
+                table_wise_orders[ro['tables.name']] = orders_by_table
+
+            return {"recent_orders": table_wise_orders}
     except TypeError:
         return {"error": "Invalid Input"}, ValidationError
     except KeyError:
