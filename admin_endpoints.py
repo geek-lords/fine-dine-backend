@@ -91,7 +91,8 @@ def generate_code():
         filename = f'{restaurant_id}-{table}-{uuid4()}.png'
         image.save('statics/qr/' + filename)
         with open('statics/qr/' + filename, 'rb') as f:
-            return f.read(), 200, {'Content-Type': 'image/png', 'Content-Disposition': f'attachment; filename={name}.png'}
+            return f.read(), 200, {'Content-Type': 'image/png',
+                                   'Content-Disposition': f'attachment; filename={name}.png'}
 
 
 @admin.route("/create_admin", methods=['POST'])
@@ -739,8 +740,34 @@ def delete_menu():
         return {"error": "Invalid Request"}, ValidationError
 
 
-@admin.route("/order_history", methods=["GET"])
+@admin.route("/order_history", methods=["POST"])
 def order_history():
+    """
+        (Admin Authenticated)
+        Sample Input:
+            {
+                restaurant_id: <id>
+            }
+        Sample Output:
+            {
+    "order_history": [
+        {
+            "id": "203e686d-eeda-4bcd-b428-cd0fece6c83b",
+            "name": "Sarvesh Joshi",
+            "price_excluding_tax": "1980.00",
+            "tax": "465.30",
+            "time_and_date": "Sun, 06 Jun 2021 19:56:01 GMT"
+        },
+        {
+            "id": "6149bfa4-07ef-47b1-bfa9-55ee1908765a",
+            "name": "Sarvesh Joshi",
+            "price_excluding_tax": "6660.00",
+            "tax": "None",
+            "time_and_date": "Sat, 05 Jun 2021 21:04:52 GMT"
+        }
+    ]
+}
+    """
     try:
         admin_id = authenticate(request)
         if not admin_id:
@@ -755,15 +782,50 @@ def order_history():
             curr.execute(
                 "Select orders.id, orders.price_excluding_tax, orders.tax, orders.time_and_date, users.name from orders join restaurant on orders.restaurant_id = restaurant.id join users on users.id = orders.user_id where (restaurant.id = %s and orders.payment_status = 0)",
                 restaurant_id)
-            return {"order_history": curr.fetchall()}
+            order_history = curr.fetchall()
+            for orders in order_history:
+                orders["price_excluding_tax"] = str(orders["price_excluding_tax"])
+                orders["tax"] = str(orders["tax"])
+            return {"order_history": order_history}
     except KeyError:
         return {"error": "Restaurant ID not found"}, ValidationError
     except TypeError:
         return {"error": "Invalid input"}, ValidationError
 
 
-@admin.route("/detailed_order/<order_id>", )
+@admin.route("/detailed_order/<order_id>", methods=["POST"])
 def detailed_order(order_id):
+    """
+        (user authenticated)
+        Sample Output:
+            {
+                "details": {
+                    "bill": [{
+                        "name": "Paneer Butter Masala",
+                        "price": "480.00",
+                        "quantity": "4"
+                    },
+                    {
+                        "name": "Kadhai Paneer",
+                        "price": "460.00",
+                        "quantity": "9"
+                    },
+                    {
+                        "name": "Tandoori Roti Bucket",
+                        "price": "300.00",
+                        "quantity": "2"
+                    }
+                    ],
+                "overall_information": {
+                    "name": "Sarvesh Joshi",
+                    "price_excluding_tax": "6660.00",
+                    "tax": "None",
+                    "time_and_date": "Sat, 05 Jun 2021 21:04:52 GMT"
+                }
+                }
+                    }
+
+    """
     try:
         admin_id = authenticate(request)
         if not admin_id:
@@ -778,10 +840,15 @@ def detailed_order(order_id):
                 "Select users.name, orders.time_and_date,orders.price_excluding_tax, orders.tax from users join orders on orders.user_id = users.id where orders.id = %s",
                 order_id)
             overall_information = cur.fetchone()
+            overall_information['price_excluding_tax'] = str(overall_information['price_excluding_tax'])
+            overall_information['tax'] = str(overall_information['tax'])
             cur.execute(
                 "Select menu.name, menu.price, order_items.quantity from menu join order_items on menu.id = order_items.menu_id where order_items.order_id = %s ",
                 order_id)
             detailed_bill = cur.fetchall()
+            for bills in detailed_bill:
+                bills["price"] = str(bills["price"])
+                bills["quantity"] = str(bills["quantity"])
             return {"details": {"overall_information": overall_information, "bill": detailed_bill}}
     except KeyError:
         return {"error": "Invalid Input"}, ValidationError
@@ -789,15 +856,24 @@ def detailed_order(order_id):
         return {"error": "Invalid Request for Order Details."}, ValidationError
 
 
-@admin.route("/new_orders", methods=["GET"])
+@admin.route("/new_orders", methods=["POST"])
 def new_orders():
+    """
+    (Admin Authenticated)
+    Sample Input: {
+        "restaurant_id" : 1
+    }
+    Sample Output: {
+        "new_orders: [
+            <list>
+        ]
+    }
+    """
     try:
         admin_id = authenticate(request)
         if not admin_id:
             return {"error": "User Authentication Failed"}, ValidationError
-        if not request.json:
-            return {"error": "JSON Data not found."}, ValidationError
-        restaurant_id = request.json["restaurant_id"]
+        restaurant_id = request.json['restaurant_id']
         with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute("Select admin_id from restaurant where id = %s", restaurant_id)
             if cur.fetchone()['admin_id'] != admin_id:
@@ -806,6 +882,8 @@ def new_orders():
                 "Select new_orders.id, menu.name, menu.description, new_orders.quantity, orders.table_id, users.name from new_orders join menu on new_orders.menu_id = menu.id join orders on orders.id = new_orders.order_id join users on orders.user_id = users.id where (orders.restaurant_id = %s and new_orders.delivered_items = 1) order by orders.time_and_date asc",
                 restaurant_id)
             yet_to_deliver = cur.fetchall()
+            for ytd in yet_to_deliver:
+                ytd["quantity"] = str(ytd["quantity"])
             return {"new_orders": yet_to_deliver}
     except KeyError:
         return {"error": "Important Data is missing."}, ValidationError
@@ -815,6 +893,17 @@ def new_orders():
 
 @admin.route("/delivered/<id>", methods=["POST"])
 def delivered_menu(id):
+    """
+        (Admin Authenticated)
+        Sample Input :
+        {
+            restaurant_id: id
+        }
+        Sample Output:
+        {
+            "success": "Successfully Delivered Requested Item"
+        }
+    """
     try:
         admin_id = authenticate(request)
         restaurant_id = request.json['restaurant_id']
@@ -839,6 +928,37 @@ def delivered_menu(id):
 
 @admin.route("/recent_orders", methods=["POST"])
 def recent_orders():
+    """
+        (Admin Authenticated)
+        Sample Input:
+            {
+                "restaurant_id":1
+            }
+        Sample Output:
+        {
+            {
+                "recent_orders": [
+                {
+                "menu.name": "Kadhai Paneer",
+                "name": "Sarvesh Joshi",
+                "payment_status": "4",
+                "quantity": "3",
+                "tables.name": "A",
+                "time_and_date": "Sun, 06 Jun 2021 22:17:58 GMT"
+                },
+                {
+                    "menu.name": "Tandoori Roti Bucket",
+                    "name": "Sarvesh Joshi",
+                    "payment_status": "4",
+                    "quantity": "2",
+                    "tables.name": "A",
+                    "time_and_date": "Sun, 06 Jun 2021 22:17:58 GMT"
+                }
+                ]
+            }
+        }
+
+    """
     try:
         admin_id = authenticate(request)
         if not request.json:
@@ -851,9 +971,14 @@ def recent_orders():
             if cur.fetchone()['admin_id'] != admin_id:
                 return {"error": "Unauthorised Request."}, ValidationError
             cur.execute(
-                "Select new_orders.quantity,tables.name, orders.payment_status, orders.time_and_date, users.name, menu.name from new_orders join orders on new_orders.order_id = orders.id join users on users.id = orders.user_id join menu on menu.id = new_orders.menu_id join tables on orders.table_id =  tables.id where (new_orders.delivered_items = 0  and orders.restaurant_id = %s and orders.time_and_date > DATE_SUB(CURDATE(), INTERVAL 1 DAY)) order by orders.time_and_date asc",
+                "select users.name ,new_orders.quantity, menu.name, orders.payment_status, orders.time_and_date, tables.name from new_orders join menu on new_orders.menu_id = menu.id join orders on orders.id = new_orders.order_id join tables on tables.id = orders.table_id join users on users.id = orders.user_id where(orders.restaurant_id = %s and orders.time_and_date > DATE_SUB(CURDATE(), INTERVAL 2 DAY) and new_orders.delivered_items = 0) order by orders.time_and_date asc",
                 restaurant_id)
-            return {"recent_orders": cur.fetchall()}
+            recent_order = cur.fetchall()
+            for ro in recent_order:
+                ro["quantity"] = str(ro["quantity"])
+                ro["payment_status"] = str(ro["payment_status"])
+
+            return {"recent_orders": recent_order}
     except TypeError:
         return {"error": "Invalid Input"}, ValidationError
     except KeyError:
