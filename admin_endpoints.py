@@ -971,7 +971,7 @@ def recent_orders():
             if cur.fetchone()['admin_id'] != admin_id:
                 return {"error": "Unauthorised Request."}, ValidationError
             cur.execute(
-                "select users.name ,new_orders.quantity, menu.name, orders.payment_status, orders.time_and_date, tables.name from new_orders join menu on new_orders.menu_id = menu.id join orders on orders.id = new_orders.order_id join tables on tables.id = orders.table_id join users on users.id = orders.user_id where(orders.restaurant_id = %s and orders.time_and_date > DATE_SUB(CURDATE(), INTERVAL 2 DAY) and new_orders.delivered_items = 0) order by orders.time_and_date asc",
+                "select users.name ,new_orders.quantity, menu.name, orders.payment_status, orders.time_and_date, tables.name from new_orders join menu on new_orders.menu_id = menu.id join orders on orders.id = new_orders.order_id join tables on tables.id = orders.table_id join users on users.id = orders.user_id where(orders.restaurant_id = %s and orders.time_and_date > DATE_SUB(CURDATE(), INTERVAL 1 DAY) and new_orders.delivered_items = 0) order by orders.time_and_date asc",
                 restaurant_id)
             recent_order = cur.fetchall()
             for ro in recent_order:
