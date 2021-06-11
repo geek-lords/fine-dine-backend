@@ -787,8 +787,9 @@ def order_history():
                 "join restaurant on orders.restaurant_id = restaurant.id "
                 "join users on users.id = orders.user_id "
                 "where (restaurant.id = %s and orders.payment_status = 0)"
-                "order by orders.time_and_date",
-                restaurant_id)
+                "order by orders.time_and_date desc",
+                restaurant_id
+            )
             order_history = curr.fetchall()
             for orders in order_history:
                 orders["price_excluding_tax"] = str(orders["price_excluding_tax"])
