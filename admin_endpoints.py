@@ -894,7 +894,8 @@ def new_orders():
             if cur.fetchone()['admin_id'] != admin_id:
                 return {"error": "Unauthorized Request."}, ValidationError
             cur.execute(
-                "Select new_orders.id, menu.name, menu.description, new_orders.quantity, orders.table_id, users.name, tables.name "
+                "Select new_orders.id, menu.name, menu.description, new_orders.quantity, orders.table_id, "
+                "users.name, tables.name, orders.id "
                 "from new_orders "
                 "join menu on new_orders.menu_id = menu.id "
                 "join orders on orders.id = new_orders.order_id "
@@ -1000,7 +1001,8 @@ def recent_orders():
             if cur.fetchone()['admin_id'] != admin_id:
                 return {"error": "Unauthorised Request."}, ValidationError
             cur.execute(
-                "select users.name ,new_orders.quantity, menu.name, orders.payment_status, orders.time_and_date, tables.name "
+                "select users.name ,new_orders.quantity, menu.name, orders.payment_status, "
+                "orders.time_and_date, tables.name, orders.id "
                 "from new_orders "
                 "join menu on new_orders.menu_id = menu.id "
                 "join orders on orders.id = new_orders.order_id "
