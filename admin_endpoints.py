@@ -788,6 +788,9 @@ def order_history():
             for orders in order_history:
                 orders["price_excluding_tax"] = str(orders["price_excluding_tax"])
                 orders["tax"] = str(orders["tax"])
+                time_and_date_in_IST = orders['time_and_date'].astimezone(timezone('Asia/Kolkata'))
+                orders["time_and_date"] = time_and_date_in_IST.strftime("%I:%M %p %d/%m/%Y")
+
             return {"order_history": order_history}
     except KeyError:
         return {"error": "Restaurant ID not found"}, ValidationError
@@ -1022,8 +1025,6 @@ def recent_orders():
             for ro in recent_order:
                 ro["quantity"] = str(ro["quantity"])
                 ro["payment_status"] = str(ro["payment_status"])
-                time_and_date_in_IST = ro["time_and_date"].astimezone(timezone('Asia/Kolkata'))
-                ro["time_and_date"] = time_and_date_in_IST.strftime("%I:%M %p %d/%m/%Y")
 
             table_wise_orders = {}
 
