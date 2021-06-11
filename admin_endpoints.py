@@ -782,7 +782,12 @@ def order_history():
             if not admin_id == curr.fetchone()['admin_id']:
                 return {"error": "Requesting Admin and Menu Pair doesn't exists."}, ValidationError
             curr.execute(
-                "Select orders.id, orders.price_excluding_tax, orders.tax, orders.time_and_date, users.name from orders join restaurant on orders.restaurant_id = restaurant.id join users on users.id = orders.user_id where (restaurant.id = %s and orders.payment_status = 0)",
+                "Select orders.id, orders.price_excluding_tax, orders.tax, orders.time_and_date, users.name "
+                "from orders "
+                "join restaurant on orders.restaurant_id = restaurant.id "
+                "join users on users.id = orders.user_id "
+                "where (restaurant.id = %s and orders.payment_status = 0)"
+                "order by orders.time_and_date",
                 restaurant_id)
             order_history = curr.fetchall()
             for orders in order_history:
