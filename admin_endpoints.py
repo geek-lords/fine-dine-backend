@@ -11,7 +11,9 @@ from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, request, send_from_directory
 from jwt import InvalidSignatureError
 # from urlvalidator import URLValidator
+from pytz import timezone
 
+import paytm
 from config import jwt_secret
 from db_utils import connection
 
@@ -1000,24 +1002,28 @@ def recent_orders():
             cur.execute("Select admin_id from restaurant where id = %s", restaurant_id)
             if cur.fetchone()['admin_id'] != admin_id:
                 return {"error": "Unauthorised Request."}, ValidationError
+
             cur.execute(
                 "select users.name ,new_orders.quantity, menu.name, orders.payment_status, "
                 "orders.time_and_date, tables.name, orders.id "
                 "from new_orders "
                 "join menu on new_orders.menu_id = menu.id "
                 "join orders on orders.id = new_orders.order_id "
+                "and orders.id in (select id from orders where payment_status != %s order by time_and_date desc)"
                 "join tables on tables.id = orders.table_id "
                 "join users on users.id = orders.user_id "
                 "where orders.restaurant_id = %s "
                 "and orders.time_and_date > DATE_SUB(CURDATE(), INTERVAL 1 DAY) "
                 "and new_orders.delivered_items = 0 "
                 "order by orders.time_and_date",
-                restaurant_id
+                (paytm.PaymentStatus.SUCCESSFUL, restaurant_id)
             )
             recent_order = cur.fetchall()
             for ro in recent_order:
                 ro["quantity"] = str(ro["quantity"])
                 ro["payment_status"] = str(ro["payment_status"])
+                time_and_date_in_IST = ro["time_and_date"].astimezone(timezone('Asia/Kolkata'))
+                ro["time_and_date"] = time_and_date_in_IST.strftime("%I:%M %p %d/%m/%Y")
 
             table_wise_orders = {}
 
@@ -1030,7 +1036,8 @@ def recent_orders():
                 table_wise_orders[ro['tables.name']] = orders_by_table
 
             return {"recent_orders": table_wise_orders}
-    except TypeError:
+    except TypeError as e:
+        print(e)
         return {"error": "Invalid Input"}, ValidationError
     except KeyError:
         return {"error": "Required JSON Data Missing"}, ValidationError
