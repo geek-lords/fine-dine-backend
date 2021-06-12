@@ -16,6 +16,7 @@ from pytz import timezone
 import paytm
 from config import jwt_secret
 from db_utils import connection
+from user_endpoints import get_menu
 
 admin = Blueprint('admin', __name__)
 
@@ -622,35 +623,7 @@ def get_menus():
                     ]
             }
     """
-    try:
-        admin_id = authenticate(request)
-        if not admin_id:
-            print('Authentication failed')
-            return {"error": "User Authentication failed"}, ValidationError
-
-        restaurant_id = request.args['restaurant_id']
-
-        with connection() as conn, conn.cursor(pymysql.cursors.DictCursor) as cur:
-            cur.execute("Select admin_id from restaurant where id = %s", restaurant_id)
-            if cur.rowcount == 0 or cur.fetchone()['admin_id'] != admin_id:
-                print('Authorization failed')
-                return {"error": "Authorization failed"}, ValidationError
-
-            cur.execute(
-                "Select id, name, description, photo_url ,price from menu "
-                "where (restaurant_id = %s AND active_menu = 0)",
-                restaurant_id
-            )
-            menus = cur.fetchall()
-            for menu in menus:
-                menu['price'] = float(menu['price'])
-        return {"menu": menus}
-    except KeyError:
-        print('missing restaurant id')
-        return {"error": "Missing Restaurant Id."}, ValidationError
-    except TypeError as e:
-        print(e)
-        return {"error": "Invalid Information"}, ValidationError
+    return get_menu()
 
 
 @admin.route("/new_menu", methods=["POST"])
