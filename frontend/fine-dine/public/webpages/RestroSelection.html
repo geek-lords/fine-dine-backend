@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Fine Dine</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="icon" href="favicon.png" type="image/png" sizes="16x16">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,200;0,300;0,400;0,500;0,600;1,200&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.js" integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk=" crossorigin="anonymous"></script>
+</head>
+
+<body style="font-family: Poppins;" class="bg-gray-50">
+
+    <!--Loading-->
+    <div class="fixed z-10 inset-0 overflow-y-auto hidden" id="loading_icon">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75 grid grid-cols-3 md:grid-cols-11">
+                    <div class="col-span-1 md:col-span-5"></div>
+                    <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24 mt-72 md:mt-80"></div>
+                    <div class="col-span-1 md:col-span-5"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--End-->
+
+    <script src="" async defer></script>
+    <div class="grid grid-cols-12 h-full">
+        <nav class="w-full col-span-full shadow-sm border-b-2 border-gray-200" style="height:4 rem;">
+            <div class="max-w-8xl mx-auto lg:mx-4 px-2 sm:px-6 lg:px-8">
+                <div class="relative flex items-start md:items-center justify-between h-16">
+                    <div class="flex-1 flex items-start justify-start p-5 md:p-0 sm:items-stretch sm:justify-start">
+                        <div class="flex-shrink-0 flex items-center">
+                            <img class="block lg:hidden h-8 w-auto" src="../assets/logo.svg" alt="Fine Dine">
+                            <img class="hidden lg:block h-8 w-auto" src="../assets/logo.svg" alt="Fine Dine"><span style="font-family: Aquire;" class="ml-2  lg:block text-gray-700 text-xl">Fine Dine</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        <!--Left Section-->
+        <div class="col-span-12 p-10 md:col-span-6 h-full md:ml-32 md:mt-10">
+            <!--Title-->
+            <p class="text-2xl leading-snug text-left font-semibold">Welcome Back<span id="user" class="text-blue-500"></span></p>
+            <!--Restro Selection Box-->
+            <div id="add_rest" class="w-9/12 h-auto border-2 border-gray-200 shadow-md rounded-2xl mt-10">
+                <p class="text-center m-5 text-2xl text-gray-600 font-medium">Select Restraurant</p>
+                <!--Individual Card(Can Make Multiple Cards If Copied This Div)
+                <div id="rest_id" class="restaurant w-auto h-auto border-2 border-gray-300 my-3 mx-6 rounded-xl flex">
+                    <div class="w-20 h-20 rounded-md m-3 bg-black flex-none"> <img class="w-20 h-20 object-fill rounded-md" src="restro.jpg"> </div>
+                    <div class="m-2 w-auto h-auto">
+                        <span class="text-2xl text-gray-700" style="font-family: Poppins Medium;">Shiv Sagar</span>
+                        <p class="text-gray-400 text-sm">Cecilia Chapman 711-2880 Nulla St. Mankato Mississippi 96522 (257)</p>
+                    </div>
+                </div>-->
+            </div>
+            <!--End Individual Cards-->
+            <div class="w-9/12 text-center my-5">
+                <a href="AddRestro.html" class="text-blue-400">Add New Restraurant</a>
+            </div>
+        </div>
+        <!--Right Section-->
+        <!--Content-->
+        <div class="md:col-span-6 -mt-5">
+            <!--Theme Picture-->
+            <div class="hidden md:block">
+                <img src="../assets/restro.svg">
+            </div>
+        </div>
+
+    </div>
+
+    <script src="/js/rest_selection.js"></script>
+</body>
+
+</html>

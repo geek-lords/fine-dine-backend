@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Fine Dine</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="icon" href="favicon.png" type="image/png" sizes="16x16">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,200;0,300;0,400;0,500;0,600;1,200&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.js" integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk=" crossorigin="anonymous"></script>
+</head>
+
+<body style="font-family: Poppins;" class="bg-gray-50">
+
+    <!--Loading-->
+    <div class="fixed z-10 inset-0 overflow-y-auto hidden" id="loading_icon">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75 grid grid-cols-3 md:grid-cols-11">
+                    <div class="col-span-1 md:col-span-5"></div>
+                    <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24 mt-72 md:mt-80"></div>
+                    <div class="col-span-1 md:col-span-5"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--End-->
+
+    <div class="grid grid-cols-12 h-full">
+        <nav class="w-full col-span-full shadow-sm border-b-2 border-gray-200" style="height:3.5rem;">
+            <div class="max-w-8xl mx-auto lg:mx-4 px-2 sm:px-6 lg:px-8">
+                <div class="relative flex items-center justify-between h-16">
+                    <div class="absolute inset-y-0 left-0 flex items-center sm:hidden">
+                        <!-- Mobile menu button-->
+                        <button type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white" aria-controls="mobile-menu" aria-expanded="false">
+                      <span class="sr-only">Open main menu</span>
+        <!--
+                        Icon when menu is closed.
+            
+                        Heroicon name: outline/menu
+            
+                        Menu open: "hidden", Menu closed: "block"
+                      -->
+        <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+        <!--
+                        Icon when menu is open.
+            
+                        Heroicon name: outline/x
+            
+                        Menu open: "block", Menu closed: "hidden"
+                      -->
+        <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                    </div>
+                    <div class="flex-1 flex items-center justify-center sm:items-stretch sm:justify-start">
+                        <div class="flex-shrink-0 flex items-center">
+                            <img class="block lg:hidden h-8 w-auto ml-12" src="logo.svg" alt="Workflow">
+                            <img class="hidden lg:block h-8 w-auto" src="../assets/logo.svg" alt="Fine Dine"><span class="ml-2 hidden lg:block text-gray-700 text-xl" style="font-family: Aquire;">Fine Dine</span>
+                        </div>
+                        <div class="flex-1 flex items-center justify-center sm:items-stretch sm:justify-end sm:mr-10">
+                            <div class="hidden sm:block">
+                                <!--<div class="flex space-x-4">-->
+                                <!-- Current: "bg-gray-900 text-white", Default: "text-gray-300 hover:bg-gray-700 hover:text-white"
+                                    <a href="#" class="text-gray-700 py-3 text-sm font-medium" aria-current="page">Manage Menu</a>
+
+                                    <a href="#" class="text-gray-700  px-3 py-3 text-sm font-medium">Manage Orders</a>
+
+                                    <a href="#" class="text-gray-700  px-3 py-3 text-sm font-medium">Manage Tables</a>
+
+                                    <a href="#" class="text-gray-700  px-3 py-3 text-sm font-medium">History</a>
+                                </div> -->
+                            </div>
+                        </div>
+                        <!-- Profile dropdown -->
+                        <div class="ml-3 relative">
+                            <!-- <div>
+                            <button type="button" class="bg-gray-800 flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white" id="user-menu-button" aria-expanded="false" aria-haspopup="true">
+                          <span class="sr-only">Open user menu</span>
+                          <img class="h-8 w-8 rounded-full" src="user.png" alt="">
+                        </button>-->
+                        </div>
+
+                        <!--
+                        Dropdown menu, show/hide based on menu state.
+            
+                        Entering: "transition ease-out duration-100"
+                          From: "transform opacity-0 scale-95"
+                          To: "transform opacity-100 scale-100"
+                        Leaving: "transition ease-in duration-75"
+                          From: "transform opacity-100 scale-100"
+                          To: "transform opacity-0 scale-95"
+                      -->
+                        <div class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 hidden ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">-->
+                            <!-- Active: "bg-gray-100", Not Active: "" -->
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 " role="menuitem" tabindex="-1" id="user-menu-item-0">Your Profile</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-1">Settings</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700" role="menuitem" tabindex="-1" id="user-menu-item-2">Sign out</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile menu, show/hide based on menu state. -->
+            <div class="hidden" id="mobile-menu">
+                <div class="px-2 pt-2 pb-3 space-y-1">-->
+                    <!-- Current: "bg-gray-900 text-white", Default: "text-gray-300 hover:bg-gray-700 hover:text-white" -->
+                    <a href="#" class="bg-gray-900 text-white block px-3 py-2 rounded-md text-base font-medium" aria-current="page">Manage Menu</a>
+
+                    <a href="#" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Manage Orders</a>
+
+                    <a href="#" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Manage Tables</a>
+
+                    <a href="#" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium">History</a>
+                </div>
+            </div>
+        </nav>
+    </div>
+
+    <div class="grid grid-cols-12 h-auto">
+        <!--Left Section-->
+        <div class="col-span-6 ml-10 lg:ml-32">
+            <div class="block mt-5">
+                <p class="text-xl text-blue-600">Add New Restaurant</p>
+
+                <form onsubmit="addRestro(event)" class="font-medium lg:mt-2">
+                    <div class="my-2">
+                        <label class="lg:text-xl text-gray-500" for="res-name">Name</label><br>
+                        <input required class="border-2 border-gray-300 outline-none rounded-lg w-72 h-12 p-3 text-lg mt-2 focus:ring-2 focus:ring-blue-600 focus:border-white" type="text" id="res-name" name="res-name" placeholder="Name of your famous restaurant"><br>
+                    </div>
+                    <div class="my-2">
+                        <label class="lg:text-xl text-gray-500" for="GST">GST</label><br>
+                        <input required class="border-2 border-gray-300 outline-none rounded-lg w-32 h-12 p-3 text-lg mt-2 focus:ring-2 focus:ring-blue-600 focus:border-white" type="number" min="0" id="gst" name="gst" placeholder="Eg. 18.00"><span class="text-xl text-gray-600 ml-3">%</span><br>
+                    </div>
+                    <div class="my-2">
+                        <label class="lg:text-xl text-gray-500" for="addr">Address</label><br>
+                        <textarea required class="border-2 border-gray-300 outline-none rounded-lg w-72 h-24 text-lg mt-2 p-3 focus:ring-2 focus:ring-blue-600 focus:border-white" type="text" id="addr" name="addr" placeholder="Eg. Behind Some Building,near famous landmark"></textarea><br>
+                    </div>
+                    <div class="my-2">
+                        <label class="lg:text-xl text-gray-500" for="pin">Pincode</label><br>
+                        <input required class="border-2 border-gray-300 outline-none rounded-lg w-72 h-12 p-3 text-lg mt-2 focus:ring-2 focus:ring-blue-600 focus:border-white" type="number" min="0" id="Pincode" name="Pincode" placeholder="Eg. 414205"><br>
+                    </div>
+                    <div class="my-2">
+                        <label class="lg:text-xl text-gray-500" for="description">Description</label><br>
+                        <textarea required class="border-2 border-gray-300 outline-none rounded-lg w-72 h-24 p-3 text-lg mt-2 focus:ring-2 focus:ring-blue-600 focus:border-white" type="text" id="description" name="description" placeholder="Let us know about your restaurant in short"></textarea><br>
+                    </div>
+                    <div class="my-2">
+                        <label class="text-lg text-gray-700">Upload Photo of your Restaurant</label><br>
+                        <input required class="mt-1" type="file" id="upload-file" name="rest-img" accept="image/"><br><br>
+                    </div>
+                    <div class="mb-10">
+                        <input id="submitForm" class="lg:mt-2 p-4 w-72 rounded-lg bg-blue-500 text-gray-50 text-xl hover:bg-blue-600" type="submit" value="Submit">
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!--Right Section-->
+        <!--Content-->
+        <div class="hidden lg:col-span-6 lg:grid grid-cols-6 lg:bg-gray-100">
+            <!--Theme Picture-->
+            <div class="lg:col-span-1"></div>
+            <div class="lg:col-span-4">
+                <img src="../assets/restro.svg" />
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script src="/js/add_restro.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Sign In</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,200;0,300;0,400;0,500;0,600;1,200&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.js" integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk=" crossorigin="anonymous"></script>
+</head>
+
+<body>
+
+    <!--Loading-->
+    <div class="fixed z-10 inset-0 overflow-y-auto hidden" id="loading_icon">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-500 opacity-75 grid grid-cols-3 md:grid-cols-11">
+                    <div class="col-span-1 md:col-span-5"></div>
+                    <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24 mt-72 md:mt-80"></div>
+                    <div class="col-span-1 md:col-span-5"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--End-->
+
+    <script src="" async defer></script>
+    <div class="grid lg:grid-cols-12 h-full">
+
+        <nav class="w-full col-span-full shadow-sm border-b-2 border-gray-200" style="height:4 rem;">
+            <div class="max-w-8xl mx-auto lg:mx-4 px-2 sm:px-6 lg:px-8">
+                <div class="relative flex items-start md:items-center justify-between h-16">
+                    <div class="flex-1 flex items-start justify-start p-5 md:p-0 sm:items-stretch sm:justify-start">
+                        <div class="flex-shrink-0 flex items-center">
+                            <img class="block lg:hidden h-8 w-auto" src="../assets/logo.svg" alt="Workflow">
+                            <img class="hidden lg:block h-8 w-auto" src="../assets/logo.svg" alt="Workflow"><span style="font-family: Aquire;" class="ml-2  lg:block text-gray-700 text-xl">Fine Dine</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="col-span-12 md:col-span-7 bg-gray-50 h-full md:block">
+            <div class="hidden md:block">
+                <p class="text-gray-400 md:mt-6 md:ml-20 text-xl" style="font-family: Poppins;">Food taste better when you eat it with <br> your family and friends</p>
+            </div>
+            <!--Theme Picture-->
+            <div class="ml-20 hidden lg:block">
+                <img src="../assets/restro.svg">
+            </div>
+        </div>
+
+        <div class="col-span-5 mt-12">
+            <div class="p-10">
+                <div>
+                    <p class="text-gray-400" style="font-family: Poppins;">Welcome back</p>
+                    <span class="text-4xl text-gray-700 font-semibold" style="font-family: Poppins;">Sign in</span><br>
+                    <p class="text-base text-gray-400 mt-1.5 font-medium" style="font-family: Poppins;">Don't have an account?<a class="text-blue-500 hover:text-blue-600" href="signUp.html"> Register</a> </p>
+                </div>
+                <form method="post" onsubmit="return loginAdmin(event)" class="mt-5 font-medium" style="font-family: Poppins;">
+                    <div class="mt-4">
+                        <label class="text-xl text-gray-500" for="email">Email</label><br>
+                        <input required class="border-2 border-gray-300 outline-none rounded-lg w-72 h-12 p-3 text-lg mt-2 focus:ring-2 focus:ring-blue-600 focus:border-white" type="email" id="email" name="email" placeholder="wow@youremail.com"><br>
+                    </div>
+                    <div class="mt-4">
+                        <label class="text-xl text-gray-500" for="pass">Password</label><br>
+                        <input required class="border-2 border-gray-300 outline-none rounded-lg w-72 h-12 p-3 text-lg mt-2 focus:ring-2 focus:ring-blue-600 focus:border-white" type="password" id="pass" name="pass" placeholder="************"><br>
+                        <input class="mt-7 p-4 w-72 rounded-lg bg-blue-500 text-gray-50 text-xl hover:bg-blue-600" type="submit" value="Login">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="/js/signIn.js"></script>
+</body>
+
+</html>

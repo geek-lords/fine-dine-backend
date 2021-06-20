@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Fine Dine</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="icon" href="favicon.png" type="image/png" sizes="16x16">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,200;0,300;0,400;0,500;0,600;1,200&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.js" integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk=" crossorigin="anonymous"></script>
+</head>
+
+<body style="font-family: Poppins;" class="bg-gray-50 font-medium">
+    <script src="" async defer></script>
+    <div class="grid grid-cols-12 h-full">
+
+        <nav class="w-full col-span-full shadow-sm border-b-2 border-gray-200" style="height:4 rem;">
+            <div class="max-w-8xl mx-auto lg:mx-4 px-2 sm:px-6 lg:px-8">
+                <div class="relative flex items-start md:items-center justify-between h-16">
+                    <div class="flex-1 flex items-start justify-start p-5 md:p-0 sm:items-stretch sm:justify-start">
+                        <div class="flex-shrink-0 flex items-center">
+                            <img class="block lg:hidden h-8 w-auto" src="../assets/logo.svg" alt="Workflow">
+                            <img class="hidden lg:block h-8 w-auto" src="../assets/logo.svg" alt="Workflow"><span style="font-family: Poppins;" class="ml-2  lg:block text-gray-700 text-xl">Fine Dine</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex items-center justify-center sm:items-stretch sm:justify-end sm:mr-10 ">
+                        <div class="block">
+                            <div class="flex space-x-4 ">
+                                <a href="signIn.html " class="text-gray-900 p-1 mt-4 md:mt-0 md:px-3 md:py-3 text-base inline">Sign in</a>
+                                <a href="signUp.html " class="bg-blue-500 text-white mt-4 p-1 md:mt-0 md:px-3 md:py-3 rounded-lg text-base font-medium inline hover:bg-blue-700 ">Sign up</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!--Left Section-->
+        <div class="col-span-12 p-10 md:p-0 md:col-span-6 h-full md:ml-32 md:mt-28 ">
+            <p class="text-5xl leading-snug font-semibold">Seamless dining experience with <br> FINE DINE</p>
+            <p class="text-gray-600 text-xl mt-6 font-medium">Grow your business 'SAFELY' with <br> FINE DINE</p>
+        </div>
+        <!--Right Section-->
+        <!--Content-->
+        <div class="md:col-span-6 -mt-5 ">
+            <!--Theme Picture-->
+            <div class="hidden mb-32 md:block">
+                <img src="../assets/restro.svg">
+            </div>
+            <div id="down_arrow" class="hidden md:block -mt-16 mb-10 animate-bounce">
+                <img src="../assets/down arrow.svg" onclick="goToBottom()">
+            </div>
+        </div>
+
+    </div>
+    <section class="text-gray-600 body-font bg-gray-100">
+        <div class="container px-5 py-24 mx-auto">
+            <div class="flex flex-col text-center w-full mb-20">
+                <h1 class="text-2xl font-medium title-font mb-4 text-gray-900 tracking-widest">OUR TEAM</h1>
+                <!--<p class="lg:w-2/3 mx-auto leading-relaxed text-base">Whatever cardigan tote bag tumblr hexagon brooklyn asymmetrical gentrify, subway tile poke farm-to-table. Franzen you probably haven't heard of them.</p>-->
+            </div>
+            <div class="flex flex-wrap p-8 md:ml-12">
+                <div class="p-4 lg:w-1/2">
+                    <div class="h-full flex sm:flex-row flex-col items-center sm:justify-start justify-center text-center sm:text-left">
+                        <img alt="team" class="flex-shrink-0 rounded-lg w-48 h-48 object-cover object-center sm:mb-0 mb-4" src="../assets/team/abhi.png">
+                        <div class="flex-grow sm:pl-8">
+                            <h2 class="title-font font-medium text-lg text-gray-900">Abhiraj Kale</h2>
+                            <h3 class="text-gray-500 mb-3">Frontend Developer</h3>
+                            <span class="inline-flex">
+                              <a class="text-gray-500" href="https://github.com/abhiraj-kale">
+                                <img src="../assets/git.svg">
+                              </a> 
+                  </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 lg:w-1/2">
+                    <div class="h-full flex sm:flex-row flex-col items-center sm:justify-start justify-center text-center sm:text-left">
+                        <img alt="team" class="flex-shrink-0 rounded-lg w-48 h-48 object-cover object-center sm:mb-0 mb-4" src="../assets/team/sarvesh.jfif">
+                        <div class="flex-grow sm:pl-8">
+                            <h2 class="title-font font-medium text-lg text-gray-900">Sarvesh Joshi</h2>
+                            <h3 class="text-gray-500 mb-3">Backend Developer</h3>
+                            <span class="inline-flex">
+                              <a class="text-gray-500" href="https://github.com/SarveshJoshi25">
+                                <img src="../assets/git.svg">
+                              </a> 
+                  </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 lg:w-1/2">
+                    <div class="h-full flex sm:flex-row flex-col items-center sm:justify-start justify-center text-center sm:text-left">
+                        <img alt="team" class="flex-shrink-0 rounded-lg w-48 h-48 object-cover object-center sm:mb-0 mb-4" src="../assets/team/hemil.jpeg">
+                        <div class="flex-grow sm:pl-8">
+                            <h2 class="title-font font-medium text-lg text-gray-900">Hemil Ruparel</h2>
+                            <h3 class="text-gray-500 mb-3">Backend Developer</h3>
+                            <span class="inline-flex">
+                              <a class="text-gray-500" href="https://github.com/HemilTheRebel">
+                                <img src="../assets/git.svg">
+                              </a> 
+                  </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 lg:w-1/2">
+                    <div class="h-full flex sm:flex-row flex-col items-center sm:justify-start justify-center text-center sm:text-left">
+                        <img alt="team" class="flex-shrink-0 rounded-lg w-48 h-48 object-cover object-center sm:mb-0 mb-4" src="../assets/team/rohan.jfif">
+                        <div class="flex-grow sm:pl-8">
+                            <h2 class="title-font font-medium text-lg text-gray-900">Rohan Yadav</h2>
+                            <h3 class="text-gray-500 mb-3">UI Developer</h3>
+                            <span class="inline-flex">
+                              <a class="text-gray-500" href="https://github.com/rohanYadav03">
+                                <img src="../assets/git.svg">
+                              </a>
+                  </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <script src="/js/homepage.js"></script>
+</body>
+
+</html>
