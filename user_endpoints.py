@@ -262,14 +262,14 @@ def get_menu():
 
         if cur.rowcount == 0:
             print('restaurant id does not exist')
-            return {'error', 'Restaurant does not exist'}, ValidationError
+            return {'error': 'Restaurant does not exist'}, ValidationError
 
         restaurant = cur.fetchone()[0]
 
         cur.execute(
             'select id, name, description, photo_url, price '
             'from menu '
-            'where restaurant_id = %s',
+            'where restaurant_id = %s and active_menu = 0',
             (restaurant_id,)
         )
 
