@@ -1,5 +1,5 @@
 // Global variables
-BASE_URL = "https://admin-fine-dine.herokuapp.com/api/v1/admin"
+BASE_URL = "https://fine-dine-backend.onrender.com/api/v1/admin"
 
 
 function getCookie(name) {
