@@ -29,7 +29,7 @@ function getURL(callback){
     console.log(Image)
     $.ajax({
         type: "POST",
-        url: 'https://admin-fine-dine.herokuapp.com/api/v1/photo/add',
+        url: 'https://fine-dine-backend.onrender.com/api/v1/photo/add',
         data: Image,
         contentType: false,
         processData: false,
